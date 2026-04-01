@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10분 세미나 시멘틱 서치</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&amp;family=JetBrains+Mono:wght@400;600&amp;family=Noto+Sans+KR:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+    <style>
+/* ── VIEWPORT BASE (PC ONLY) ──────────────────────────────── */
+html, body {
+    height: 100%;
+    overflow-x: hidden;
+}
+html {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+}
+.slide {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.sc {
+    width: 100%;
+    max-width: 1280px;
+    padding: var(--pad);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    overflow: visible;
+    max-height: 100vh;
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+    html { scroll-behavior: auto; }
+}
+
+/* ── THEME (타닥 스타일 적용) ──────────────────────────────────── */
+:root {
+    --bg: #0d0d11;
+    --bg2: #141419;
+    --bg3: #1b1b23;
+    --border: rgba(255,255,255,0.08);
+
+    /* 타닥 컬러 시스템 */
+    --blue:   #4a9eff; --blue-bg:   rgba(74,158,255,.11); --blue-bd:   rgba(74,158,255,.32);
+    --green:  #3ecf8e; --green-bg:  rgba(62,207,142,.11); --green-bd:  rgba(62,207,142,.32);
+    --orange: #ff8c42; --orange-bg: rgba(255,140,66,.11); --orange-bd: rgba(255,140,66,.32);
+    --mint:   #2dd4bf; --mint-bg:   rgba(45,212,191,.11); --mint-bd:   rgba(45,212,191,.32);
+    --purple: #a78bfa; --purple-bg: rgba(167,139,250,.13); --purple-bd: rgba(167,139,250,.36);
+    --red:    #ff5b5b; --red-bg:    rgba(255,91,91,.11); --red-bd:    rgba(255,91,91,.32);
+    --gray:   #8b8fa8; --gray-bg:   rgba(139,143,168,.11); --gray-bd:   rgba(139,143,168,.32);
+
+    --text:  #eaeaf2;
+    --text2: #8b8fa8;
+    --text3: #4e5268;
+
+    --fd: 'Noto Sans KR', sans-serif;
+    --fm: 'Noto Sans KR', sans-serif;
+    --fcode: 'JetBrains Mono', monospace;
+    --fb: 'Noto Sans KR', sans-serif;
+
+    /* Type scale */
+    --fs-hero: clamp(2.9rem, 7.4vw, 6.8rem);
+    --fs-title: clamp(1.85rem, 3.8vw, 3.05rem);
+    --fs-body: clamp(0.97rem, 1.45vw, 1.14rem);
+    --fs-sm: clamp(1rem, calc(1.08vw + 0.125rem), 1.2rem);
+
+    /* Spacing */
+    --frame-max: 1280px;
+    --pad: clamp(2rem, 5.5vw, 6rem);
+    --gap: clamp(1rem, 2vh, 2rem);
+    --ease: cubic-bezier(.16,1,.3,1);
+}
+
+/* ── RESET ──────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: var(--fb);
+    color: var(--text);
+    background: var(--bg);
+}
+
+/* ── SLIDE BASE ─────────────────────────────────────────── */
+.slide {
+    background: var(--bg);
+}
+
+/* Grid background pattern */
+.slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+}
+.slide > * { position: relative; z-index: 1; }
+
+/* ── PROGRESS / DOTS ───────────────────────────────────── */
+.pbar {
+    position: fixed; top: 0; left: 0; height: 2px; width: 0%;
+    background: linear-gradient(90deg, var(--blue), var(--mint));
+    transition: width .35s var(--ease); z-index: 1000;
+}
+.nav-dots {
+    position: fixed; right: clamp(.7rem, 1.4vw, 1.2rem); top: 50%;
+    transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 7px; z-index: 1000;
+}
+.nd {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--text3); border: none; cursor: pointer;
+    transition: all .3s var(--ease);
+}
+.nd.on { background: var(--blue); transform: scale(1.7); }
+
+.snum {
+    position: absolute;
+    top: clamp(.8rem, 1.8vw, 1.4rem); right: clamp(1rem, 2.5vw, 2.2rem);
+    font-family: var(--fm); font-size: var(--fs-sm);
+    color: var(--text3); letter-spacing: .04em; z-index: 10;
+}
+
+/* ── ANIMATIONS ─────────────────────────────────────────── */
+.rv {
+    opacity: 0; transform: translateY(18px);
+    transition: opacity .6s var(--ease), transform .6s var(--ease);
+}
+.slide.vis .rv { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: .05s; } .d2 { transition-delay: .14s; }
+.d3 { transition-delay: .23s; } .d4 { transition-delay: .32s; }
+.d5 { transition-delay: .41s; } .d6 { transition-delay: .50s; }
+
+/* ── TYPE ATOMS ─────────────────────────────────────────── */
+.lbl {
+    font-family: var(--fm); font-size: var(--fs-sm);
+    color: var(--text2); font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; white-space: nowrap;
+}
+.ttl {
+    font-family: var(--fd); font-size: var(--fs-title);
+    font-weight: 800; color: var(--text); line-height: 1.22;
+    letter-spacing: -.01em;
+}
+.sub {
+    font-size: var(--fs-body); color: var(--text2); line-height: 1.68;
+}
+
+/* ── CHIP / BADGE ───────────────────────────────────────── */
+.badge {
+    display: inline-flex; align-items: center;
+    font-family: var(--fm); font-size: var(--fs-sm);
+    padding: .28em .75em; border-radius: 4px; letter-spacing: .02em;
+    white-space: nowrap;
+}
+.b-blue   { background: var(--blue-bg);   color: var(--blue);   border: 1px solid var(--blue-bd); }
+.b-green  { background: var(--green-bg);  color: var(--green);  border: 1px solid var(--green-bd); }
+.b-orange { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-bd); }
+.b-mint   { background: var(--mint-bg);   color: var(--mint);   border: 1px solid var(--mint-bd); }
+.b-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-bd); }
+.b-red    { background: var(--red-bg);    color: var(--red);    border: 1px solid var(--red-bd); }
+.b-gray   { background: var(--gray-bg);   color: var(--gray);   border: 1px solid var(--gray-bd); }
+
+.chip {
+    border-radius: 9px;
+    padding: clamp(.45rem,.9vw,.85rem) clamp(.65rem,1.2vw,1.15rem);
+    font-size: var(--fs-body); font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    white-space: nowrap; line-height: 1.3;
+}
+.c-blue   { border: 1px solid var(--blue-bd);   background: var(--blue-bg);   color: var(--blue); }
+.c-green  { border: 1px solid var(--green-bd);  background: var(--green-bg);  color: var(--green); }
+.c-orange { border: 1px solid var(--orange-bd); background: var(--orange-bg); color: var(--orange); }
+.c-mint   { border: 1px solid var(--mint-bd);   background: var(--mint-bg);   color: var(--mint); }
+.c-purple { border: 1px solid var(--purple-bd); background: var(--purple-bg); color: var(--purple); }
+.c-red    { border: 1px solid var(--red-bd);    background: var(--red-bg);    color: var(--red); }
+.c-gray   { border: 1px solid var(--gray-bd);   background: var(--gray-bg);   color: var(--gray); }
+
+/* ── ACCENT LINE ─────────────────────────────────────────── */
+.aline { position: absolute; top: 0; left: 0; width: 100%; height: 2px; }
+.aline-blue   { background: linear-gradient(90deg, var(--blue), var(--mint), transparent); }
+.aline-purple { background: linear-gradient(90deg, var(--purple), var(--blue), transparent); }
+.aline-green  { background: linear-gradient(90deg, var(--green), var(--mint), transparent); }
+.aline-orange { background: linear-gradient(90deg, var(--orange), var(--red), transparent); }
+
+/* ── TITLE SLIDE ─────────────────────────────────────────── */
+.s1-hero {
+    font-family: var(--fd);
+    font-size: var(--fs-hero);
+    font-weight: 800; line-height: 1.04;
+    letter-spacing: -.02em; color: var(--text);
+}
+.s1-hero .grad {
+    display: block;
+    background: linear-gradient(130deg, var(--blue) 0%, var(--mint) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.s1-kw { display: flex; gap: clamp(.5rem,.9vw,.8rem); flex-wrap: wrap; }
+
+/* ── TABLE OF CONTENTS ───────────────────────────────────── */
+.toc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(.8rem,1.4vw,1.2rem);
+}
+.toc-card {
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: clamp(.95rem,1.6vw,1.35rem);
+    display: flex;
+    flex-direction: column;
+    gap: .42rem;
+    min-height: 150px;
+}
+.toc-num {
+    font-family: var(--fm);
+    font-size: var(--fs-sm);
+    color: var(--text3);
+}
+.toc-name {
+    font-size: clamp(1.02rem,1.65vw,1.3rem);
+    font-weight: 700;
+    line-height: 1.3;
+}
+.toc-desc {
+    font-size: var(--fs-sm);
+    color: var(--text2);
+    line-height: 1.6;
+}
+
+/* ── COMPARISON TABLE ────────────────────────────────────── */
+.compare-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(1.2rem,2.2vw,2.5rem);
+}
+.compare-col {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(.5rem,.9vw,.8rem);
+}
+.compare-title {
+    font-size: clamp(1.1rem,1.7vw,1.35rem);
+    font-weight: 700;
+    margin-bottom: .3em;
+}
+.compare-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .5em;
+    font-size: var(--fs-body);
+    line-height: 1.6;
+}
+.compare-bullet {
+    color: var(--text3);
+    flex-shrink: 0;
+    margin-top: .1em;
+}
+
+/* ── CODE BLOCK ──────────────────────────────────────────── */
+.code-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: clamp(1.2rem,2vw,1.8rem);
+    font-family: var(--fcode);
+    font-size: var(--fs-sm);
+    line-height: 1.8;
+    overflow-x: auto;
+}
+.code-hl { color: var(--mint); }
+.code-kw { color: var(--purple); }
+.code-str { color: var(--green); }
+.code-comment { color: var(--text3); }
+
+/* ── FLOW DIAGRAM ────────────────────────────────────────── */
+.flow-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(.55rem,1vw,.95rem);
+    width: 100%;
+}
+.flow-step {
+    flex: 1;
+    min-width: 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: clamp(.7rem,1.1vw,1rem) clamp(.55rem,.9vw,.85rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    text-align: center;
+    min-height: clamp(86px,14vh,108px);
+}
+.flow-step-name {
+    font-size: clamp(.98rem, calc(1.05vw + .25rem), 1.15rem);
+    font-weight: 700;
+    line-height: 1.35;
+}
+.flow-step-note {
+    font-size: clamp(.745rem, calc(.9vw + .125rem), .865rem);
+    color: var(--text3);
+    line-height: 1.4;
+}
+.flow-arr {
+    color: var(--text3);
+    font-family: var(--fm);
+    font-size: clamp(.9rem,1.4vw,1.1rem);
+    flex-shrink: 0;
+}
+
+.process-stack {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(.9rem, 1.6vh, 1.2rem);
+    width: 100%;
+}
+.process-lane {
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+    padding: clamp(.9rem, 1.5vw, 1.25rem);
+    display: flex;
+    flex-direction: column;
+    gap: .8rem;
+}
+.process-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.process-title {
+    font-size: clamp(1rem, 1.4vw, 1.18rem);
+    font-weight: 800;
+    letter-spacing: -.01em;
+}
+.process-sub {
+    font-size: var(--fs-sm);
+    color: var(--text2);
+}
+.process-flow {
+    display: flex;
+    align-items: center;
+    gap: clamp(.45rem, .9vw, .8rem);
+    flex-wrap: wrap;
+}
+.process-node {
+    min-width: 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    padding: .8rem .95rem;
+    background: var(--bg2);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    line-height: 1.35;
+}
+.process-arrow {
+    color: var(--text3);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.process-node strong {
+    display: block;
+    color: var(--text);
+    font-size: var(--fs-body);
+}
+
+/* ── GRID CARDS ──────────────────────────────────────────── */
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(.7rem,1.3vw,1.1rem);
+}
+.grid-card {
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: clamp(.9rem,1.6vw,1.4rem);
+    display: flex;
+    flex-direction: column;
+    gap: .45em;
+    min-height: clamp(140px,20vh,180px);
+}
+.grid-num {
+    font-family: var(--fm);
+    font-size: var(--fs-sm);
+    color: var(--text3);
+}
+.grid-name {
+    font-size: var(--fs-body);
+    font-weight: 700;
+}
+.grid-desc {
+    font-size: var(--fs-sm);
+    color: var(--text2);
+    line-height: 1.6;
+}
+
+/* ── WARNING / NOTE BOX ──────────────────────────────────── */
+.warn-box {
+    border-radius: 10px;
+    border: 1px solid var(--orange-bd);
+    background: var(--orange-bg);
+    padding: clamp(.8rem,1.4vw,1.3rem) clamp(1rem,1.7vw,1.5rem);
+    display: flex;
+    align-items: flex-start;
+    gap: .75em;
+}
+.warn-icon {
+    font-family: var(--fm);
+    font-size: var(--fs-body);
+    color: var(--orange);
+    flex-shrink: 0;
+}
+.warn-text {
+    font-size: var(--fs-body);
+    color: var(--text2);
+    line-height: 1.6;
+}
+.warn-text strong {
+    color: var(--orange);
+    font-weight: 700;
+}
+
+.note-box {
+    border-radius: 10px;
+    border: 1px solid var(--mint-bd);
+    background: var(--mint-bg);
+    padding: clamp(.65rem,1.1vw,.9rem) clamp(.8rem,1.4vw,1.1rem);
+    font-size: var(--fs-sm);
+    color: var(--mint);
+    line-height: 1.6;
+    display: flex;
+    align-items: flex-start;
+    gap: .75em;
+}
+.note-box.note-list {
+    flex-direction: column;
+    gap: .4em;
+}
+.note-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .75em;
+}
+.note-icon {
+    flex-shrink: 0;
+}
+.note-text {
+    color: inherit;
+    line-height: 1.6;
+}
+
+/* ── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 960px) {
+    .toc-grid, .grid-3 { grid-template-columns: 1fr; }
+    .compare-box { grid-template-columns: 1fr; }
+    .flow-wrap { flex-wrap: wrap; }
+    .flow-arr { display: none; }
+    .process-flow { align-items: stretch; }
+    .process-arrow { display: none; }
+    .slide {
+        height: auto;
+        min-height: 100svh;
+        overflow: visible;
+    }
+    .sc { max-height: none; }
+    .nav-dots { display: none; }
+}
+
+/* ── MODAL ───────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s var(--ease);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: clamp(1.4rem,3vw,2.2rem);
+    max-width: 560px; width: 90vw;
+    max-height: 92vh; overflow-y: auto;
+    position: relative;
+    display: flex; flex-direction: column; gap: 1.1rem;
+    transform: translateY(22px) scale(.97);
+    transition: transform .3s var(--ease);
+}
+.modal-overlay.open .modal-box { transform: translateY(0) scale(1); }
+.modal-close {
+    position: absolute; top: 1rem; right: 1rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text2);
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem; cursor: pointer;
+    transition: color .2s;
+}
+.modal-close:hover { color: var(--text); }
+.modal-title {
+    font-size: clamp(1.05rem,1.9vw,1.35rem);
+    font-weight: 800; line-height: 1.3; padding-right: 2.2rem;
+}
+.modal-body {
+    font-size: var(--fs-body); color: var(--text2); line-height: 1.75;
+}
+.modal-body strong { color: var(--text); }
+.modal-img {
+    width: 100%; max-width: 380px;
+    margin: 0 auto; display: block;
+    border-radius: 10px; opacity: .88;
+    border: 1px solid var(--border);
+}
+.modal-divider {
+    height: 1px; background: var(--border); margin: .2rem 0;
+}
+.detail-btn {
+    display: inline-flex; align-items: center; gap: .3em;
+    margin-top: .55rem;
+    font-size: var(--fs-sm); font-weight: 700;
+    background: none; border: none; cursor: pointer; padding: 0;
+    text-decoration: underline; text-underline-offset: 3px;
+    opacity: .75; transition: opacity .2s;
+}
+.detail-btn:hover { opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<div class="pbar" id="pbar"></div>
+<nav class="nav-dots" id="dots"></nav>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     01 · TITLE
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s1">
+    <div class="aline aline-blue"></div>
+    <div class="snum">01 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Technical Seminar</p>
+        <h1 class="s1-hero rv d2">
+            10분 세미나<br>
+            <span class="grad">시멘틱 서치</span>
+        </h1>
+        <p class="sub rv d3" style="font-family: var(--fm);">의미 기반 검색의 구현과 최적화 전략</p>
+        <div class="s1-kw rv d4">
+            <span class="badge b-blue">Embedding</span>
+            <span class="badge b-green">Vector DB</span>
+            <span class="badge b-purple">Hybrid Search</span>
+            <span class="badge b-mint">Re-ranking</span>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     02 · TABLE OF CONTENTS
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s2">
+    <div class="snum">02 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Agenda</p>
+        <h2 class="ttl rv d2">오늘 다룰 내용</h2>
+        <p class="sub rv d3">시멘틱 서치의 핵심 개념부터 실전 최적화 전략까지</p>
+        <div class="toc-grid rv d4">
+            <div class="toc-card" style="border-color:var(--blue-bd);background:var(--blue-bg)">
+                <div class="toc-num">01</div>
+                <div class="toc-name" style="color:var(--blue)">기초 개념</div>
+                <div class="toc-desc">시멘틱 서치란? · 작동 원리</div>
+            </div>
+            <div class="toc-card" style="border-color:var(--green-bd);background:var(--green-bg)">
+                <div class="toc-num">02</div>
+                <div class="toc-name" style="color:var(--green)">임베딩 & 평가</div>
+                <div class="toc-desc">모델·차원 선택 · 재구축 비용 · 임계값 설계</div>
+            </div>
+            <div class="toc-card" style="border-color:var(--orange-bd);background:var(--orange-bg)">
+                <div class="toc-num">03</div>
+                <div class="toc-name" style="color:var(--orange)">인덱싱 & 인프라</div>
+                <div class="toc-desc">KNN vs ANN · 필터링 전략 · 벡터 DB</div>
+            </div>
+            <div class="toc-card" style="border-color:var(--purple-bd);background:var(--purple-bg)">
+                <div class="toc-num">04</div>
+                <div class="toc-name" style="color:var(--purple)">한계 & 개선</div>
+                <div class="toc-desc">시멘틱 서치의 한계 · 하이브리드 · 리랭킹</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     03 · WHAT IS SEMANTIC SEARCH
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s3">
+    <div class="snum">03 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Introduction</p>
+        <h2 class="ttl rv d2">시멘틱 서치란?</h2>
+        <p class="sub rv d3">키워드 매칭을 넘어 의미를 이해하는 검색</p>
+        <div class="compare-box rv d4">
+            <div class="compare-col" style="border: 1px solid var(--gray-bd); background: var(--gray-bg); border-radius: 14px; padding: clamp(1rem,1.8vw,1.5rem);">
+                <div class="compare-title" style="color:var(--gray)">🔤 전통적 검색</div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>정확한 단어 매칭</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>"자동차 수리" ≠ "차량 정비"</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>BM25, TF-IDF 등</span>
+                </div>
+            </div>
+            <div class="compare-col" style="border: 1px solid var(--mint-bd); background: var(--mint-bg); border-radius: 14px; padding: clamp(1rem,1.8vw,1.5rem);">
+                <div class="compare-title" style="color:var(--mint)">🧠 시멘틱 검색</div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>문맥과 의미 이해</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>"자동차 수리" ≈ "차량 정비"</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>벡터 임베딩 기반 유사도</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     04 · HOW IT WORKS
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s4">
+    <div class="snum">04 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Architecture</p>
+        <h2 class="ttl rv d2">작동 원리</h2>
+        <p class="sub rv d3">문서는 미리 벡터화해 저장하고, 질의는 실시간으로 벡터화해 검색 <span style="font-family: var(--fcode); color: var(--text3);">Embedding-based retrieval</span></p>
+        <div class="flow-wrap rv d4">
+            <div class="flow-step" style="border-color:var(--blue-bd);background:var(--blue-bg)">
+                <div class="flow-step-name" style="color:var(--blue)">질의문</div>
+                <div class="flow-step-note">사용자 입력</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--green-bd);background:var(--green-bg)">
+                <div class="flow-step-name" style="color:var(--green)">임베딩 모델</div>
+                <div class="flow-step-note">텍스트 → 벡터</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--purple-bd);background:var(--purple-bg)">
+                <div class="flow-step-name" style="color:var(--purple)">유사도 계산</div>
+                <div class="flow-step-note">코사인 유사도</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--mint-bd);background:var(--mint-bg)">
+                <div class="flow-step-name" style="color:var(--mint)">결과 반환</div>
+                <div class="flow-step-note">상위 K개</div>
+            </div>
+        </div>
+        <div class="process-stack rv d5">
+            <div class="process-lane" style="border-color:var(--blue-bd); background:linear-gradient(180deg, var(--blue-bg), rgba(255,255,255,.02));">
+                <div class="process-head">
+                    <div class="process-title" style="color:var(--blue)">문서 임베딩</div>
+                    <div class="process-sub">사전 처리</div>
+                </div>
+                <div class="process-flow">
+                    <div class="process-node" style="border-color:var(--blue-bd); background:rgba(74,158,255,.08);">
+                        <strong>문서들</strong>
+                        원본 데이터
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-node" style="border-color:var(--mint-bd); background:rgba(45,212,191,.08);">
+                        <strong>임베딩 모델</strong>
+                        텍스트 벡터화
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-node" style="border-color:var(--purple-bd); background:rgba(167,139,250,.08);">
+                        <strong>벡터</strong>
+                        수치 표현
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-node" style="border-color:var(--green-bd); background:rgba(62,207,142,.08);">
+                        <strong>벡터 DB</strong>
+                        인덱스 저장
+                    </div>
+                </div>
+            </div>
+            <div class="process-lane" style="border-color:var(--orange-bd); background:linear-gradient(180deg, var(--orange-bg), rgba(255,255,255,.02));">
+                <div class="process-head">
+                    <div class="process-title" style="color:var(--orange)">검색 실행</div>
+                    <div class="process-sub">실시간 처리</div>
+                </div>
+                <div class="process-flow">
+                    <div class="process-node" style="border-color:var(--orange-bd); background:rgba(255,140,66,.08);">
+                        <strong>질의문</strong>
+                        사용자 입력
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-node" style="border-color:var(--mint-bd); background:rgba(45,212,191,.08);">
+                        <strong>임베딩 모델</strong>
+                        질의 벡터화
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-node" style="border-color:var(--purple-bd); background:rgba(167,139,250,.08);">
+                        <strong>유사도 계산</strong>
+                        가까운 후보 탐색
+                    </div>
+                    <span class="process-arrow">→</span>
+                    <div class="process-node" style="border-color:var(--blue-bd); background:rgba(74,158,255,.08);">
+                        <strong>결과</strong>
+                        top-k 반환
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     05 · EMBEDDING MODELS
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s5">
+    <div class="snum">05 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Core Components</p>
+        <h2 class="ttl rv d2">모델과 차원 선택</h2>
+        <p class="sub rv d3">모델과 차원은 처음 선택이 중요하다</p>
+        <div class="grid-3 rv d4">
+            <div class="grid-card" style="border-color:var(--blue-bd);background:var(--blue-bg)">
+                <div class="grid-num">관리형 범용</div>
+                <div class="grid-name" style="color:var(--blue)">Gemini / OpenAI / Voyage</div>
+                <div class="grid-desc">Gemini Embeddings, OpenAI text-embeddings, Voyage<br>API 기반이라 빠른 실험과 도입에 적합</div>
+            </div>
+            <div class="grid-card" style="border-color:var(--green-bd);background:var(--green-bg)">
+                <div class="grid-num">오픈 범용</div>
+                <div class="grid-name" style="color:var(--green)">BGE / E5 / GTE 계열</div>
+                <div class="grid-desc">자체 호스팅, 차원·비용 통제가 쉬움<br>운영 환경에 맞게 직접 튜닝하기 좋음</div>
+            </div>
+            <div class="grid-card" style="border-color:var(--purple-bd);background:var(--purple-bg)">
+                <div class="grid-num">도메인 모델</div>
+                <div class="grid-name" style="color:var(--purple)">파인튜닝 / 도메인 적응</div>
+                <div class="grid-desc">전문 용어, 약어, 상품코드처럼 범용 모델이 자주 헷갈릴 때 검토<br>범용 모델로 기준선을 본 뒤 필요할 때 적용</div>
+            </div>
+        </div>
+        <div class="note-box rv d5" style="margin-top: 1.5rem;">
+            <div class="note-icon">▣</div>
+            <div class="note-text"><strong>차원도 신중하게 선택해야 한다</strong> — 차원이 높을수록 벡터 공간이 넓어져 더 많은 정보를 담을 수 있지만, 메모리와 연산 비용도 함께 커진다.</div>
+        </div>
+        <div class="warn-box rv d5" style="margin-top: 1.5rem;">
+            <div class="warn-icon">!</div>
+            <div class="warn-text">
+                <strong>모델이나 차원을 바꾸는 비용이 크다</strong><br>
+                임베딩 모델이나 차원을 바꾸면 기존 벡터를 그대로 쓸 수 없어 <strong>전체 데이터 재임베딩 + 인덱스 재구축 + 품질 재검증</strong>이 필요하다
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     06 · THRESHOLD TUNING
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s6">
+    <div class="snum">06 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Challenges</p>
+        <h2 class="ttl rv d2">평가와 임계값 설계</h2>
+        <p class="sub rv d3">후보 검색 평가는 랭킹 중심, 서빙 단계는 threshold도 함께 설계</p>
+        <div class="warn-box rv d4">
+            <div class="warn-icon">⚠️</div>
+            <div class="warn-text">
+                <strong>완벽한 임계값은 없다</strong><br>
+                <span>• 서비스마다 다를 뿐 아니라, <strong>같은 도메인 내에서도</strong> 벡터 공간과 모델에 따라 임계값이 달라짐</span><br>
+                <span>• 임계값은 결과를 완벽하게 제어하는 수단이 아니라 <strong>필터로 생각해야 함</strong> — 노이즈를 걷어내는 용도이지 품질을 보장하지 않음</span><br>
+                <span>• threshold 하나보다 top-k 랭킹 품질 검증이 더 중요함</span><br>
+            </div>
+        </div>
+        <div class="grid-3 rv d5" style="margin-top: 1.5rem;">
+            <div class="grid-card">
+                <div class="grid-name" style="color:var(--orange)">오프라인 평가</div>
+                <div class="grid-desc">Recall@k, MRR, nDCG로 후보 검색 품질 확인</div>
+            </div>
+            <div class="grid-card">
+                <div class="grid-name" style="color:var(--red)">온라인 지표</div>
+                <div class="grid-desc">CTR, zero-result rate, 재검색률로 운영 품질 추적</div>
+            </div>
+            <div class="grid-card">
+                <div class="grid-name" style="color:var(--blue)">튜닝 원칙</div>
+                <div class="grid-desc">threshold보다 top-k, chunking, rerank 조합을 함께 조정</div>
+            </div>
+        </div>
+        <div class="note-box rv d6" style="margin-top: 1.5rem;">
+            <div class="note-icon">💡</div>
+            <div class="note-text"><strong>왜 Recall@k / Precision@k를 봐야 하나:</strong> 검색은 top-1이 아니라 top-k를 서빙하므로, 정답이 top-k 안에 포함되는지가 핵심이다. threshold 하나로 반환 여부를 자르기 전에 top-k 안에 타겟이 들어오는지부터 확인해야 함</div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     07 · KNN vs ANN
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s7">
+    <div class="snum">07 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Indexing Strategy</p>
+        <h2 class="ttl rv d2">KNN vs ANN 선택 전략</h2>
+        <p class="sub rv d3">핵심 기준은 전체 규모보다 검색 시 실제 후보군 크기</p>
+        <div class="compare-box rv d4">
+            <div class="compare-col" style="border: 1px solid var(--green-bd); background: var(--green-bg); border-radius: 14px; padding: clamp(1rem,1.8vw,1.5rem);">
+                <div class="compare-title" style="color:var(--green)">KNN (Brute Force)</div>
+                <div class="compare-item">
+                    <span class="compare-bullet">✓</span>
+                    <span>모든 벡터와 직접 비교</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">✓</span>
+                    <span>Exact search라 recall 손실 없음</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">✓</span>
+                    <span>특히 pre-filter 후 후보군이 작을 때 가장 단순하고 정확</span>
+                </div>
+            </div>
+            <div class="compare-col" style="border: 1px solid var(--purple-bd); background: var(--purple-bg); border-radius: 14px; padding: clamp(1rem,1.8vw,1.5rem);">
+                <div class="compare-title" style="color:var(--purple)">ANN (Approximate)</div>
+                <div class="compare-item">
+                    <span class="compare-bullet">✓</span>
+                    <span>근사 알고리즘 (HNSW, IVF)</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">✓</span>
+                    <span>속도 우선, 약간의 정확도 손실</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">✓</span>
+                    <span>전역 검색이 크고 KNN이 실제로 느릴 때만 의미가 있음</span>
+                </div>
+            </div>
+        </div>
+        <div class="note-box rv d5">
+            <div class="note-icon">💡</div>
+            <div class="note-text"><strong>핵심 인사이트:</strong> <strong>후보군이 작다면 KNN이 충분히 빠를 수 있다</strong><br>
+            ANN은 속도를 위해 recall을 일부 포기하는 선택이므로, 전역 검색이 크고 실제 탐색 비용이 커질 때 검토한다.<br>
+            벡터 메모리 사용량은 차원에 비례해 증가하고, 실제 속도는 차원·구현체·필터 선택률에 따라 달라진다.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     08 · FILTERING STRATEGY
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s8">
+    <div class="aline aline-green"></div>
+    <div class="snum">08 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Optimization</p>
+        <h2 class="ttl rv d2">필터링 전략 선택</h2>
+        <p class="sub rv d3">필터 선택률에 따라 KNN과 ANN 전략이 갈린다</p>
+        <div class="grid-3 rv d4">
+            <div class="grid-card" style="border-color:var(--green-bd);background:var(--green-bg);min-height:0;">
+                <div class="grid-num">전략 01</div>
+                <div class="grid-name" style="color:var(--green)">Pre-filter → KNN</div>
+                <div class="grid-desc">필터 후 후보군이 소규모일 때 적합<br>완전 탐색, 구현 단순, 충분히 빠름</div>
+                <div class="chip c-green" style="margin-top:.35rem;">인덱스 불필요</div>
+            </div>
+            <div class="grid-card" style="border-color:var(--blue-bd);background:var(--blue-bg);min-height:0;">
+                <div class="grid-num">전략 02</div>
+                <div class="grid-name" style="color:var(--blue)">ANN → Post-filter</div>
+                <div class="grid-desc">중대규모에서 검토<br>top-n 안에 필터 조건의 k개가 없으면 결과 부족 가능</div>
+                <div class="chip c-orange" style="margin-top:.35rem;">결과 부족 주의</div>
+                <button class="detail-btn" style="color:var(--blue)" onclick="openModal('modal-postfilter')">자세히 →</button>
+            </div>
+            <div class="grid-card" style="border-color:var(--red-bd);background:var(--red-bg);min-height:0;">
+                <div class="grid-num">전략 03</div>
+                <div class="grid-name" style="color:var(--red)">Pre-filter → ANN</div>
+                <div class="grid-desc">필터 후 부분 집합에 ANN을 적용하면 전체 데이터 기준으로 구축된 사전 인덱스가 깨져 성능 저하<br>엔진에 따라 아예 미지원</div>
+                <div class="chip c-red" style="margin-top:.35rem;">엔진 지원 확인</div>
+                <button class="detail-btn" style="color:var(--red)" onclick="openModal('modal-prefilter')">자세히 →</button>
+            </div>
+        </div>
+        <div class="note-box rv d5" style="margin-top: 1.5rem;">
+            <div class="note-icon">💡</div>
+            <div class="note-text"><strong>핵심은 필터 선택률</strong> — 내 서비스·도메인에서 필터가 얼마나 효과적인지 먼저 고민해야 한다.<br>
+            필터는 벡터 검색보다 <strong>더 효과적이고 정확한</strong> 후보 축소 수단이다.<br />
+            선택률이 충분히 높으면 필터 후 KNN으로 끝나고, 그래도 후보군이 크게 남을 때만 ANN을 검토한다.<br>
+            최근에는 <strong>동적 인덱스</strong>로 이 트레이드오프를 해결하려는 시도도 있다.</div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     09 · VECTOR DB
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s9">
+    <div class="snum">09 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Infrastructure</p>
+        <h2 class="ttl rv d2">벡터 검색 인프라</h2>
+        <p class="sub rv d3">제품명보다 기존 스택, 필터링, 하이브리드 지원, 운영 복잡도로 판단</p>
+        <div class="grid-3 rv d4">
+            <div class="grid-card" style="border-color:var(--blue-bd);background:var(--blue-bg)">
+                <div class="grid-name" style="color:var(--blue)">전용 벡터 인프라</div>
+                <div class="grid-desc">대규모 ANN, 멀티테넌시, 관리형 운영에 유리<br>Pinecone, Weaviate, Milvus 계열</div>
+            </div>
+            <div class="grid-card" style="border-color:var(--green-bd);background:var(--green-bg)">
+                <div class="grid-name" style="color:var(--green)">기존 스택 확장</div>
+                <div class="grid-desc">이미 운영 중인 DB/검색엔진과 통합이 쉬움<br>pgvector, Elasticsearch, MongoDB Atlas</div>
+            </div>
+            <div class="grid-card" style="border-color:var(--purple-bd);background:var(--purple-bg)">
+                <div class="grid-name" style="color:var(--purple)">저지연 / 캐시형</div>
+                <div class="grid-desc">짧은 TTL, 실시간 응답, 캐시 계층에 적합<br>Redis 등 인메모리 계열</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     10 · LIMITATIONS
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s10">
+    <div class="snum">10 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Challenges</p>
+        <h2 class="ttl rv d2">시멘틱 서치의 한계</h2>
+        <p class="sub rv d3">실전에서 마주치는 주요 문제점들</p>
+        <div class="grid-3 rv d4">
+            <div class="grid-card" style="border-color:var(--red-bd);background:var(--red-bg)">
+                <div class="grid-name" style="color:var(--red)">키워드 매칭 약점</div>
+                <div class="grid-desc">"2024년 1월" vs "2023년 1월"<br>고유명사, 제품번호 구분 어려움</div>
+            </div>
+            <div class="grid-card" style="border-color:var(--orange-bd);background:var(--orange-bg)">
+                <div class="grid-name" style="color:var(--orange)">도메인 지식 부족</div>
+                <div class="grid-desc">범용 모델의 한계<br>전문 용어, 약어 이해 부족</div>
+            </div>
+            <div class="grid-card" style="border-color:var(--gray-bd);background:var(--gray-bg)">
+                <div class="grid-name" style="color:var(--gray)">연산 비용</div>
+                <div class="grid-desc">대규모 데이터 리소스 소모<br>실시간 임베딩 생성 비용</div>
+            </div>
+        </div>
+        <div class="note-box rv d5" style="margin-top: 1.5rem;">
+            <div class="note-icon">💡</div>
+            <div class="note-text"><strong>한계를 느낀다면:</strong>
+                <div style="margin-top: 0.3rem;">
+                    <span>• top-k 순위를 못 믿겠다 → <strong>리랭킹</strong> 도입으로 후보 재정렬</span>
+                    <span>• 고유명사·키워드 매칭이 약하다 → <strong>하이브리드 검색</strong>으로 키워드 가중치 보완</span>
+                </div>
+            </div>
+        </div>
+        <div class="warn-box rv d6" style="margin-top: 1.5rem;">
+            <div class="warn-icon">⚠️</div>
+            <div class="warn-text">
+                <strong>그래도 남는 한계: 튜닝의 어려움</strong><br>
+                파라미터에 정답이 없다 — 임계값·α·top-k는 서비스와 데이터마다 달라지며, 개선 효과를 측정할 피드백 데이터조차 모으기 어렵다.<br>
+                이건 시멘틱 서치만의 문제가 아니라 <strong>검색 시스템 전반의 본질적인 어려움</strong>이다.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     11 · HYBRID SEARCH
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s11">
+    <div class="snum">11 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Improvement Strategy</p>
+        <h2 class="ttl rv d2">하이브리드 검색</h2>
+        <p class="sub rv d3">시멘틱 + 키워드 검색의 장점을 결합</p>
+        <div class="flow-wrap rv d4" style="align-items: stretch;">
+            <div class="flow-step" style="border-color:var(--gray-bd);background:var(--gray-bg)">
+                <div class="flow-step-name" style="color:var(--text)">질의</div>
+                <div class="flow-step-note">사용자 입력</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--mint-bd);background:var(--mint-bg)">
+                <div class="flow-step-name" style="color:var(--mint)">시멘틱 검색</div>
+                <div class="flow-step-note">의미 유사도</div>
+            </div>
+            <span class="flow-arr">+</span>
+            <div class="flow-step" style="border-color:var(--blue-bd);background:var(--blue-bg)">
+                <div class="flow-step-name" style="color:var(--blue)">키워드 검색</div>
+                <div class="flow-step-note">BM25 / ES</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--orange-bd);background:var(--orange-bg)">
+                <div class="flow-step-name" style="color:var(--orange)">결과 병합</div>
+                <div class="flow-step-note">정규화 + 가중치</div>
+            </div>
+        </div>
+        <div class="rv d5" style="margin-top: 1.5rem; background: var(--bg2); border: 1px solid var(--gray-bd); border-radius: 12px; padding: clamp(.9rem,1.8vw,1.4rem) clamp(1rem,2vw,1.8rem); text-align: center;">
+            <div style="font-family: var(--fcode); font-size: clamp(0.95rem,1.5vw,1.2rem); color: var(--text); letter-spacing: .02em; line-height: 1.8;">
+                score &nbsp;=&nbsp; <span style="color:var(--mint)">α</span> · semantic_score &nbsp;+&nbsp; <span style="color:var(--mint)">(1−α)</span> · keyword_score
+            </div>
+            <div style="margin-top: .6rem; font-size: var(--fs-sm); color: var(--text2);">
+                <span style="color:var(--mint)">α</span> 가 클수록 의미 유사도 중심 &nbsp;·&nbsp; 작을수록 키워드 매칭 중심
+            </div>
+        </div>
+        <div class="warn-box rv d6" style="margin-top: 1.5rem;">
+            <div class="warn-icon">⚠️</div>
+            <div class="warn-text">
+                <strong>현실: α 값 튜닝도 매우 어렵다</strong><br>
+                <span>• 쿼리 유형별로 최적 결합 방식과 α 값이 다름</span><br>
+                <span>• 점수 스케일이 달라 정규화 없이 단순 합산하면 왜곡될 수 있음</span><br>
+                <span>• <strong>완벽한 튜닝보다 로그 기반 반복 개선이 현실적</strong></span><br>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     12 · RE-RANKING
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s12">
+    <div class="snum">12 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Advanced Strategy</p>
+        <h2 class="ttl rv d2">리랭킹 방식</h2>
+        <p class="sub rv d3">후보 검색 뒤 더 정밀한 랭킹을 한 번 더 적용</p>
+       <div class="flow-wrap rv d4">
+            <div class="flow-step" style="border-color:var(--blue-bd);background:var(--blue-bg)">
+                <div class="flow-step-name" style="color:var(--blue)">1단계 후보 검색</div>
+                <div class="flow-step-note">벡터 / 하이브리드<br>많이 뽑고 빠르게 줄임</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--mint-bd);background:var(--mint-bg)">
+                <div class="flow-step-name" style="color:var(--mint)">2단계 리랭킹</div>
+                <div class="flow-step-note">Cross-encoder 또는 LLM<br>정밀하게 다시 정렬</div>
+            </div>
+        </div>
+        <div class="compare-box rv d5" style="margin-top: 1.5rem;">
+            <div class="compare-col" style="border: 1px solid var(--purple-bd); background: var(--purple-bg); border-radius: 14px; padding: clamp(1rem,1.8vw,1.5rem);">
+                <div class="compare-title" style="color:var(--purple)">Cross-encoder 리랭킹</div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>쿼리와 문서를 함께 넣어 관련도 점수 계산</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>전용 리랭커로 많이 쓰이는 실전 기본값</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>LLM보다 저렴하고 지연시간 예측이 쉬움</span>
+                </div>
+            </div>
+            <div class="compare-col" style="border: 1px solid var(--mint-bd); background: var(--mint-bg); border-radius: 14px; padding: clamp(1rem,1.8vw,1.5rem);">
+                <div class="compare-title" style="color:var(--green)">LLM 리랭킹</div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>문서 간 비교, 규칙 반영, 설명 생성까지 가능</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>복합 기준 판단에는 강하지만 비용과 지연이 큼</span>
+                </div>
+                <div class="compare-item">
+                    <span class="compare-bullet">•</span>
+                    <span>상위 소수 후보를 최종 정렬할 때 선택적으로 사용</span>
+                </div>
+            </div>
+        </div>
+        <div class="note-box rv d6" style="margin-top: 1.5rem;">
+            시멘틱 서치 결과를 다시 정렬하는 단계<br>
+            <strong>후보를 좁힌 뒤 더 비싼 랭킹을 적용한다</strong>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     13 · INTEGRATED ARCHITECTURE
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s13">
+    <div class="snum">13 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Architecture</p>
+        <h2 class="ttl rv d2">통합 아키텍처</h2>
+        <p class="sub rv d3">한 화면에서 보는 실전 검색 파이프라인</p>
+        <div class="flow-wrap rv d4">
+            <div class="flow-step" style="border-color:var(--gray-bd);background:var(--gray-bg)">
+                <div class="flow-step-name" style="color:var(--text)">쿼리 처리</div>
+                <div class="flow-step-note">분석 / 확장</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--mint-bd);background:var(--mint-bg)">
+                <div class="flow-step-name" style="color:var(--mint)">하이브리드 검색</div>
+                <div class="flow-step-note">vector + BM25</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--orange-bd);background:var(--orange-bg)">
+                <div class="flow-step-name" style="color:var(--orange)">병합 / 필터</div>
+                <div class="flow-step-note">정규화 / 서비스 규칙</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--purple-bd);background:var(--purple-bg)">
+                <div class="flow-step-name" style="color:var(--purple)">리랭커</div>
+                <div class="flow-step-note">교차 인코더 / LLM</div>
+            </div>
+            <span class="flow-arr">→</span>
+            <div class="flow-step" style="border-color:var(--blue-bd);background:var(--blue-bg)">
+                <div class="flow-step-name" style="color:var(--blue)">최종 결과</div>
+                <div class="flow-step-note">top-k 서빙</div>
+            </div>
+        </div>
+        <div class="warn-box rv d5" style="margin-top: 1.5rem;">
+            <div class="warn-icon">!</div>
+            <div class="warn-text">
+                <strong>튜닝 변수보다 데이터셋이 더 중요하다</strong><br>
+                임계값 · 모델 · α 값을 조정하기 전에 <strong>데이터셋의 벡터 공간 품질</strong>을 먼저 봐야 한다 — 군집 구조에 따라 같은 파라미터도 완전히 다른 결과를 낸다
+            </div>
+        </div>
+        <div class="note-box rv d6" style="margin-top: 1rem;">
+            💡
+            <div> 
+            <strong>도입 자체는 비교적 현실적이다</strong> — <strong>LLM 컨텍스트 축소 · 간단한 검색</strong> 용도라면 사이드 프로젝트에서도 충분히 시도할 수 있다.<br>
+            단, <strong>개선은 훨씬 어렵다</strong> — 튜닝 포인트가 많고, 데이터 기반으로 효과를 검증하기도 쉽지 않다.
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     14 · CLOSING
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="slide" id="s15">
+    <div class="aline aline-purple"></div>
+    <div class="snum">14 / 14</div>
+    <div class="sc">
+        <p class="lbl rv d1">Thank you</p>
+        <h2 class="s1-hero rv d2" style="font-size: clamp(2rem, 5vw, 4.4rem);">
+            Q&amp;A<br>
+            <span class="grad" style="margin-top: 1rem;">질문 환영합니다!</span>
+        </h2>
+        <p class="sub rv d3" style="font-family: var(--fm);">10분 세미나 시멘틱 서치</p>
+        <div class="s1-kw rv d4">
+            <span class="badge b-blue">Embedding</span>
+            <span class="badge b-green">Vector DB</span>
+            <span class="badge b-purple">Hybrid Search</span>
+            <span class="badge b-mint">Re-ranking</span>
+        </div>
+        <div class="note-box rv d5" style="margin-top: 2rem;">
+            📚 <strong>참고 자료</strong><br>
+            <span>• <a href="https://techblog.woowahan.com" target="_blank" rel="noreferrer" style="color:inherit;">우아한 기술 블로그</a></span>
+            <span>• <a href="https://fin.ai/research/do-you-really-need-a-vector-search-database/" target="_blank" rel="noreferrer" style="color:inherit;">Do You Really Need a Vector Search Database? (fin.ai)</a></span>
+        </div>
+    </div>
+</section>
+
+<!-- ── MODAL: Post-filter ─────────────────────────────────── -->
+<div class="modal-overlay" id="modal-postfilter" onclick="closeModal(this)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeModal(document.getElementById('modal-postfilter'))">✕</button>
+        <div class="modal-title" style="color:var(--blue)">ANN → Post-filter: 결과 부족 문제</div>
+        <div class="modal-divider"></div>
+        <div class="modal-body">
+            ANN으로 <strong>top-n 후보를 먼저 뽑은 뒤</strong> 필터를 적용하는 구조입니다.<br>
+            문제는 필터 조건에 맞는 문서가 top-n 안에 충분히 없을 수 있다는 점입니다.<br><br>
+            <strong>예시</strong><br>
+            top-n = 100으로 ANN 후보를 뽑았는데<br>
+            그 중 필터 조건을 통과하는 문서가 <strong>3개</strong>뿐이라면<br>
+            요청한 <strong>top-k = 10을 채울 수 없습니다.</strong><br><br>
+            <strong>완화 방법</strong><br>
+            top-n을 크게 잡으면 어느 정도 해결되지만,<br>
+            필터 선택률이 낮을수록 필요한 top-n이 기하급수적으로 커집니다.<br>
+            선택률이 매우 낮은 필터라면 <strong>Pre-filter → KNN</strong>이 더 단순하고 정확합니다.
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Pre-filter → ANN ───────────────────────────── -->
+<div class="modal-overlay" id="modal-prefilter" onclick="closeModal(this)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="closeModal(document.getElementById('modal-prefilter'))">✕</button>
+        <div class="modal-title" style="color:var(--red)">Pre-filter → ANN: 사전 인덱스가 깨지는 이유</div>
+        <div class="modal-divider"></div>
+        <img src="image.png" class="modal-img" alt="HNSW 계층 그래프 구조" />
+        <div class="modal-body">
+            <strong>HNSW</strong>는 전체 벡터 공간을 기반으로 계층적 그래프 인덱스를 <strong>사전에 구축</strong>합니다. 각 노드 간 연결은 전역 분포와 군집 구조를 전제로 설계됩니다.<br><br>
+            Pre-filter를 먼저 적용하면:<br>
+            <span>• 전역 벡터 집합이 <strong>부분 집합으로 축소</strong>되어 그래프 탐색 경로가 의미를 잃습니다.</span>
+            <span>• <strong>선택률이 낮을수록</strong> 인덱스와 실제 탐색 대상의 괴리가 커져 성능이 오히려 저하됩니다.</span><br><br>
+            엔진에 따라 <strong>아예 미지원</strong>인 경우도 있으므로 filtered ANN 지원 방식을 반드시 확인해야 합니다.
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal(id) {
+    document.getElementById(id).classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal(el) {
+    el.classList.remove('open');
+    document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open')
+            .forEach(m => closeModal(m));
+    }
+});
+
+class Deck {
+    constructor() {
+        this.slides = [...document.querySelectorAll('.slide')];
+        this.n = this.slides.length;
+        this.cur = 0;
+        this.pbar = document.getElementById('pbar');
+        this.dotsEl = document.getElementById('dots');
+        this.init();
+    }
+    init() {
+        this.makeDots();
+        this.observe();
+        this.onKey();
+        this.onWheel();
+        this.onTouch();
+        this.ui(0);
+    }
+    makeDots() {
+        this.slides.forEach((_, i) => {
+            const b = document.createElement('button');
+            b.className = 'nd';
+            b.setAttribute('aria-label', `슬라이드 ${i+1}`);
+            b.onclick = () => this.go(i);
+            this.dotsEl.appendChild(b);
+        });
+    }
+    observe() {
+        const io = new IntersectionObserver(es => {
+            es.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('vis');
+                    const i = this.slides.indexOf(e.target);
+                    if (i >= 0) this.ui(i);
+                }
+            });
+        }, { threshold: 0.5 });
+        this.slides.forEach(s => io.observe(s));
+    }
+    onKey() {
+        document.addEventListener('keydown', e => {
+            if (['ArrowDown','ArrowRight',' ','PageDown'].includes(e.key)) {
+                e.preventDefault();
+                this.next();
+            }
+            if (['ArrowUp','ArrowLeft','PageUp'].includes(e.key)) {
+                e.preventDefault();
+                this.prev();
+            }
+        });
+    }
+    onWheel() {
+        let t = 0;
+        document.addEventListener('wheel', e => {
+            e.preventDefault();
+            const now = Date.now();
+            if (now - t < 650) return;
+            t = now;
+            e.deltaY > 0 ? this.next() : this.prev();
+        }, { passive: false });
+    }
+    onTouch() {
+        let sy = 0;
+        document.addEventListener('touchstart', e => {
+            sy = e.touches[0].clientY;
+        }, { passive: true });
+        document.addEventListener('touchend', e => {
+            const d = sy - e.changedTouches[0].clientY;
+            if (Math.abs(d) > 48) d > 0 ? this.next() : this.prev();
+        }, { passive: true });
+    }
+    go(i) {
+        if (i < 0 || i >= this.n) return;
+        this.cur = i;
+        this.slides[i].scrollIntoView({ behavior: 'smooth' });
+        this.ui(i);
+    }
+    next() { this.go(this.cur + 1); }
+    prev() { this.go(this.cur - 1); }
+    ui(i) {
+        this.cur = i;
+        this.pbar.style.width = ((i + 1) / this.n * 100) + '%';
+        document.querySelectorAll('.nd').forEach((d, j) =>
+            d.classList.toggle('on', j === i)
+        );
+    }
+}
+new Deck();
+</script>
+
+</body>
+</html>
