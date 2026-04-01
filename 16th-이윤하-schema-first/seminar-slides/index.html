@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entity와 DTO 대신 Schema를 믿기로 했다</title>
+  <link rel="icon"
+    href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%231e1f27"/><path d="M15 16h14l18 16-18 16H15z" fill="%235a4cff"/><path d="M49 16v32H35L17 32 35 16z" fill="%23f06292" fill-opacity=".9"/></svg>' />
+  <style>
+    :root {
+      --bg: #1e1f27;
+      --panel: #252734;
+      --panel-soft: #2a2d3b;
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --text: #f4f4f8;
+      --muted: #b7bac7;
+      --muted-strong: #d6d9e2;
+      --purple: #5a4cff;
+      --pink: #f06292;
+      --shadow: 0 24px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #111218;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    body {
+      font-family:
+        "Apple SD Gothic Neo",
+        "Pretendard",
+        "SF Pro Display",
+        "Noto Sans KR",
+        sans-serif;
+    }
+
+    .deck {
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .slide {
+      width: min(100vw - 48px, 1600px);
+      aspect-ratio: 16 / 9;
+      background: var(--bg);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: var(--shadow);
+      padding: 54px 58px 48px;
+      display: none;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      display: block;
+    }
+
+    .topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .meta {
+      color: var(--muted-strong);
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      font-size: 19px;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+    }
+
+    .meta strong {
+      display: block;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .date {
+      color: var(--muted-strong);
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-title {
+      margin-top: 56px;
+      font-size: clamp(54px, 6vw, 86px);
+      line-height: 1.08;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      margin-top: 34px;
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--muted-strong);
+    }
+
+    .author {
+      position: absolute;
+      left: 58px;
+      bottom: 44px;
+      font-size: 22px;
+      color: var(--muted-strong);
+    }
+
+    .title {
+      font-size: clamp(34px, 3vw, 54px);
+      font-weight: 800;
+      margin-bottom: 24px;
+    }
+
+    .lede {
+      max-width: 1120px;
+      font-size: 26px;
+      line-height: 1.45;
+      color: var(--muted-strong);
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+      margin-top: 32px;
+    }
+
+    .stack .item,
+    .bullet-card,
+    .takeaway,
+    .note-card,
+    .code-card,
+    .pipeline-step,
+    .comparison-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+    }
+
+    .stack .item {
+      padding: 22px 28px;
+      font-size: 28px;
+      line-height: 1.4;
+    }
+
+    .stack .item strong {
+      display: inline-block;
+      min-width: 200px;
+      color: #ffffff;
+    }
+
+    .section-pill {
+      width: 520px;
+      max-width: 100%;
+      margin: 120px auto 0;
+      border-radius: 26px;
+      text-align: center;
+      padding: 22px 30px;
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      font-size: 64px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+    }
+
+    .toc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 34px;
+      margin-top: 62px;
+    }
+
+    .toc-card {
+      min-height: 320px;
+      padding: 26px 28px 28px;
+      background: var(--panel);
+      border-radius: 24px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .toc-card h3 {
+      margin: 0 0 22px;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .toc-card .bar {
+      width: 180px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.78);
+      margin-bottom: 24px;
+    }
+
+    .toc-card ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 12px;
+      color: var(--muted-strong);
+      font-size: 24px;
+      line-height: 1.4;
+    }
+
+    .bullet-list {
+      margin-top: 24px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .bullet-list .bullet-card {
+      padding: 22px 26px;
+      font-size: 28px;
+      line-height: 1.45;
+      color: var(--muted-strong);
+    }
+
+    .comparison-layout {
+      display: grid;
+      grid-template-columns: 220px repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+      margin-top: 22px;
+    }
+
+    .comparison-layout.two-col {
+      grid-template-columns: 220px repeat(2, minmax(0, 1fr));
+    }
+
+    .comparison-labels {
+      display: grid;
+      gap: 16px;
+      padding-top: 76px;
+    }
+
+    .comparison-labels div {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      font-size: 20px;
+      color: var(--muted);
+    }
+
+    .comparison-column {
+      display: grid;
+      gap: 14px;
+    }
+
+    .comparison-head {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 58px;
+      border-radius: 20px;
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .comparison-head.pink {
+      background: var(--pink);
+    }
+
+    .comparison-head.purple {
+      background: var(--purple);
+    }
+
+    .comparison-card {
+      padding: 18px 18px 16px;
+      display: grid;
+      gap: 12px;
+      min-height: 220px;
+    }
+
+    .comparison-card .row {
+      min-height: 64px;
+      display: grid;
+      align-content: center;
+      gap: 6px;
+    }
+
+    .comparison-card .label {
+      font-size: 17px;
+      color: var(--muted);
+    }
+
+    .comparison-card .value {
+      font-size: 21px;
+      line-height: 1.25;
+      color: white;
+    }
+
+    .takeaway {
+      margin-top: 14px;
+      padding: 15px 20px;
+      font-size: 20px;
+      line-height: 1.34;
+      color: var(--muted-strong);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1.32fr 0.88fr;
+      gap: 30px;
+      align-items: start;
+      margin-top: 26px;
+    }
+
+    .code-card {
+      padding: 22px 24px;
+      min-height: 360px;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font-family:
+        "SF Mono",
+        "JetBrains Mono",
+        "Menlo",
+        "Monaco",
+        monospace;
+      font-size: 22px;
+      line-height: 1.42;
+      color: #d7ecff;
+    }
+
+    .code-keyword {
+      color: #ffb86c;
+    }
+
+    .code-type {
+      color: #f06292;
+    }
+
+    .code-fn {
+      color: #8be9fd;
+    }
+
+    .code-var {
+      color: #c3f584;
+    }
+
+    .note-stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .note-card {
+      padding: 20px 22px;
+      font-size: 22px;
+      line-height: 1.4;
+      color: var(--muted-strong);
+    }
+
+    .note-card.accent {
+      background: var(--purple);
+      color: #111218;
+      font-weight: 800;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 56px;
+      align-items: center;
+    }
+
+    .pipeline-step {
+      min-height: 182px;
+      padding: 22px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .pipeline-step strong {
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      font-size: 28px;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .pipeline-step span {
+      font-size: 24px;
+      color: var(--muted-strong);
+      line-height: 1.35;
+    }
+
+    .pipeline-step.primary {
+      background: linear-gradient(135deg, var(--purple), #7a68ff);
+    }
+
+    .pipeline-step.primary span,
+    .pipeline-step.primary strong {
+      color: #ffffff;
+    }
+
+    .pipeline-arrow {
+      position: absolute;
+      top: 54%;
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      color: white;
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .arrow-1 {
+      left: 336px;
+    }
+
+    .arrow-2 {
+      left: 608px;
+    }
+
+    .arrow-3 {
+      left: 880px;
+    }
+
+    .question-grid {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: 1fr 120px 1fr;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .question-card {
+      min-height: 320px;
+      padding: 34px 30px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 26px;
+      display: grid;
+      align-content: center;
+      gap: 16px;
+    }
+
+    .question-card h3 {
+      margin: 0;
+      font-size: 28px;
+      color: var(--muted);
+    }
+
+    .question-card p {
+      margin: 0;
+      font-size: 42px;
+      line-height: 1.22;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .question-arrow {
+      width: 92px;
+      height: 92px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      font-size: 40px;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      position: absolute;
+      right: 58px;
+      bottom: 38px;
+      font-size: 19px;
+      color: var(--muted);
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .slide-count {
+      font-family:
+        "Gilroy",
+        "SF Pro Display",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .controls {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .controls button {
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      width: 44px;
+      height: 44px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .progress {
+      position: fixed;
+      left: 24px;
+      right: 24px;
+      bottom: 24px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--pink), var(--purple));
+    }
+
+    @media (max-width: 900px) {
+      .slide {
+        padding: 40px;
+      }
+
+      .toc-grid,
+      .comparison-layout,
+      .comparison-layout.two-col,
+      .split,
+      .pipeline,
+      .question-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .comparison-labels,
+      .question-arrow {
+        display: none;
+      }
+
+      .pipeline-arrow {
+        display: none;
+      }
+    }
+
+    @page {
+      size: 13.333in 7.5in;
+      margin: 0;
+    }
+
+    body.print-mode {
+      overflow: visible;
+      background: var(--bg);
+    }
+
+    body.print-mode .deck {
+      display: block;
+      width: auto;
+      height: auto;
+      padding: 0;
+    }
+
+    body.print-mode .slide {
+      display: block;
+      width: 13.333in;
+      height: 7.5in;
+      aspect-ratio: auto;
+      margin: 0;
+      border: 0;
+      box-shadow: none;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    body.print-mode .controls,
+    body.print-mode .progress {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="deck">
+    <section class="slide active" data-title="title">
+      <div class="topline">
+        <div class="meta"><strong>Mash-Up 16th</strong>10min Seminar</div>
+        <div class="date">2026.04.01</div>
+      </div>
+      <h1 class="hero-title">Entity와 DTO 대신<br />Schema를 믿기로 했다</h1>
+      <p class="subtitle">NestJS, TypeORM, Prisma를 거쳐 Drizzle + Zod로 오며 바뀐 설계 관점</p>
+      <div class="author">Node Team &nbsp;&nbsp;|&nbsp;&nbsp; 이윤하</div>
+    </section>
+
+    <section class="slide" data-title="toc">
+      <div class="topline">
+        <div class="meta"><strong>Mash-Up 16th</strong>10min Seminar</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">Table of Contents</h2>
+      <div class="toc-grid">
+        <article class="toc-card">
+          <h3>문제의식</h3>
+          <div class="bar"></div>
+          <ul>
+            <li>익숙했던 방식</li>
+            <li>반복 정의의 문제</li>
+            <li>왜 다른 방식이 필요했는지</li>
+          </ul>
+        </article>
+        <article class="toc-card">
+          <h3>비교와 선택</h3>
+          <div class="bar"></div>
+          <ul>
+            <li>TypeORM vs Prisma vs Drizzle</li>
+            <li>class-validator vs Zod</li>
+            <li>왜 이번 프로젝트에서는 Zod였는지</li>
+          </ul>
+        </article>
+        <article class="toc-card">
+          <h3>Schema-first</h3>
+          <div class="bar"></div>
+          <ul>
+            <li>Schema를 단일 진실원으로 둔 이유</li>
+            <li>SSOT가 프론트까지 이어지는 방식</li>
+            <li>질문의 변화와 결론</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="slide" data-title="question">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Question</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">백엔드 설계의 중심은 클래스일까, 스키마일까?</h2>
+      <div class="bullet-list">
+        <div class="bullet-card">원래 NestJS에 익숙했고 DTO class와 Entity class부터 만들던 사람이었음</div>
+        <div class="bullet-card">그런데 이번 프로젝트에서는 클래스를 먼저 만들기보다 스키마를 먼저 세우고 싶었음</div>
+        <div class="bullet-card">객체보다 데이터 규칙의 기준점을 먼저 정하고 싶었음</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="familiar">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Class-first</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">내가 익숙했던 방식: NestJS + class 중심 설계</h2>
+      <div class="stack">
+        <div class="item"><strong>DTO</strong> class와 decorator로 validation을 붙임</div>
+        <div class="item"><strong>Entity / model</strong> 설계의 중심이 되기 쉬웠음</div>
+        <div class="item"><strong>질문</strong> “어떤 클래스를 만들까?”로 자연스럽게 흘렀음</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="problem">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Repeated Definition</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">같은 데이터를 여러 번 설명하게 된다</h2>
+      <div class="stack">
+        <div class="item"><strong>흩어진 규칙</strong> DTO, validation, DB 모델, 타입, 문서에 규칙이 흩어짐</div>
+        <div class="item"><strong>수정 비용</strong> 변경할 때마다 여러 군데를 같이 바꿔야 함</div>
+        <div class="item"><strong>원본 불분명</strong> 시간이 지나면 무엇이 원본인지 흐려짐</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="orm">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Comparison</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">TypeORM vs Prisma vs Drizzle</h2>
+      <div class="comparison-layout">
+        <div class="comparison-labels">
+          <div>비교 기준</div>
+          <div>중심 모델</div>
+          <div>개발 감각</div>
+          <div>API 명세 연결</div>
+        </div>
+        <div class="comparison-column">
+          <div class="comparison-head purple">TypeORM</div>
+          <div class="comparison-card">
+            <div class="row">
+              <div class="label">중심 모델</div>
+              <div class="value">Entity class</div>
+            </div>
+            <div class="row">
+              <div class="label">개발 감각</div>
+              <div class="value">객체 모델링 중심</div>
+            </div>
+            <div class="row">
+              <div class="label">API 명세 연결</div>
+              <div class="value">API 명세와는 비교적 멂</div>
+            </div>
+          </div>
+        </div>
+        <div class="comparison-column">
+          <div class="comparison-head purple">Prisma</div>
+          <div class="comparison-card">
+            <div class="row">
+              <div class="label">중심 모델</div>
+              <div class="value">schema.prisma</div>
+            </div>
+            <div class="row">
+              <div class="label">개발 감각</div>
+              <div class="value">DB schema 중심</div>
+            </div>
+            <div class="row">
+              <div class="label">API 명세 연결</div>
+              <div class="value">validation 계층이 분리되기 쉬움</div>
+            </div>
+          </div>
+        </div>
+        <div class="comparison-column">
+          <div class="comparison-head pink">Drizzle</div>
+          <div class="comparison-card">
+            <div class="row">
+              <div class="label">중심 모델</div>
+              <div class="value">TS schema</div>
+            </div>
+            <div class="row">
+              <div class="label">개발 감각</div>
+              <div class="value">schema + query가 가까움</div>
+            </div>
+            <div class="row">
+              <div class="label">API 명세 연결</div>
+              <div class="value">drizzle-zod / OpenAPI와 연결하기 좋음</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">Drizzle은 DB schema를 TS 안에서 다루고, drizzle-zod를 통해 Zod schema와도 자연스럽게 이어가기 좋았음</div>
+    </section>
+
+    <section class="slide" data-title="validation">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Validation</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">class-validator vs Zod</h2>
+      <div class="comparison-layout two-col">
+        <div class="comparison-labels">
+          <div>비교 기준</div>
+          <div>정의 방식</div>
+          <div>실행 흐름</div>
+          <div>설계 중심</div>
+        </div>
+        <div class="comparison-column">
+          <div class="comparison-head purple">class-validator</div>
+          <div class="comparison-card">
+            <div class="row">
+              <div class="label">정의 방식</div>
+              <div class="value">class + decorator</div>
+            </div>
+            <div class="row">
+              <div class="label">실행 흐름</div>
+              <div class="value">transform + metadata + validate</div>
+            </div>
+            <div class="row">
+              <div class="label">설계 중심</div>
+              <div class="value">DTO class</div>
+            </div>
+          </div>
+        </div>
+        <div class="comparison-column">
+          <div class="comparison-head pink">Zod</div>
+          <div class="comparison-card">
+            <div class="row">
+              <div class="label">정의 방식</div>
+              <div class="value">schema object</div>
+            </div>
+            <div class="row">
+              <div class="label">실행 흐름</div>
+              <div class="value">plain data를 parse</div>
+            </div>
+            <div class="row">
+              <div class="label">설계 중심</div>
+              <div class="value">data contract</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">class-validator는 클래스를 검증의 중심에 두고, Zod는 데이터 규칙 자체를 요청/응답 형식의 기준으로 둠</div>
+    </section>
+
+    <section class="slide" data-title="why-zod">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Choice</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">왜 이번 프로젝트에서는 Zod였나</h2>
+      <div class="bullet-list">
+        <div class="bullet-card">Express에서는 plain object를 바로 parse하는 흐름이 더 자연스러움</div>
+        <div class="bullet-card">DTO class + transform보다 lean한 검증 경로를 원함</div>
+        <div class="bullet-card">Drizzle + drizzle-zod와 함께 schema-first 흐름을 만들기 좋았고, 모두가 같은 요청/응답 형식을 보게 만들고 싶었음</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="ssot">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>SSOT</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">Schema를 단일 진실원으로 두고 싶었음</h2>
+      <div class="bullet-list">
+        <div class="bullet-card">같은 데이터는 어디서 봐도 같은 규칙을 가져야 했음</div>
+        <div class="bullet-card">팀원들이 프론트와 백엔드가 모두 처음이라, 요청/응답 형식을 사람이 반복 해석하는 구조를 줄이고 싶었음</div>
+        <div class="bullet-card">drizzle-zod를 쓰면 DB 정의와 validation 정의의 거리를 줄일 수 있어서, 검증·타입·문서의 기준점을 schema에 두기 좋았음</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="pipeline">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Pipeline</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">SSOT는 백엔드 내부에서 끝나지 않았음</h2>
+      <div class="pipeline">
+        <div class="pipeline-step primary">
+          <div>
+            <strong>Zod</strong>
+            <span>Schema</span>
+          </div>
+        </div>
+        <div class="pipeline-step">
+          <div>
+            <strong>OpenAPI</strong>
+            <span>문서 자동 생성</span>
+          </div>
+        </div>
+        <div class="pipeline-step">
+          <div>
+            <strong>Orval</strong>
+            <span>타입 / client 생성</span>
+          </div>
+        </div>
+        <div class="pipeline-step" style="background: linear-gradient(135deg, var(--pink), #ff7aa6);">
+          <div>
+            <strong>Frontend</strong>
+            <span>바로 사용</span>
+          </div>
+        </div>
+      </div>
+      <div class="takeaway">OpenAPI를 자동 생성하고 Orval 설정도 직접 붙여, 모두가 같은 API 명세를 바로 사용하게 했음</div>
+    </section>
+
+    <section class="slide" data-title="code">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Code Shift</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">이번 프로젝트 코드에서 보인 변화</h2>
+      <div class="split">
+        <div class="code-card">
+          <pre><span class="code-keyword">const</span> <span class="code-var">payload</span> =
+  <span class="code-fn">createCapsuleBodySchema.parse</span>(req.body)
+
+<span class="code-keyword">type</span> <span class="code-type">CreateCapsuleInputDto</span> =
+  z.infer&lt;<span class="code-type">typeof createCapsuleBodySchema</span>&gt;
+
+<span class="code-keyword">return</span> capsulesService.createCapsule(payload)</pre>
+        </div>
+        <div class="note-stack">
+          <div class="note-card accent">Controller는 함수</div>
+          <div class="note-card"><strong>zod.parse</strong>로 입력 검증</div>
+          <div class="note-card">타입은 <strong>z.infer</strong>로 파생<br />service는 orchestration</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="question-shift">
+      <div class="topline">
+        <div class="meta"><strong>Session</strong>Shift</div>
+        <div class="date">Node Team</div>
+      </div>
+      <h2 class="title">OOP를 버렸다기보다, 질문이 달라졌음</h2>
+      <div class="question-grid">
+        <div class="question-card">
+          <h3>예전 질문</h3>
+          <p>어떤 클래스가<br />이 책임을 가져야 하지?</p>
+        </div>
+        <div class="question-arrow">→</div>
+        <div class="question-card">
+          <h3>지금 질문</h3>
+          <p>이 데이터는 어떤 규칙을 통과하고<br />어떤 shape로 흘러가지?</p>
+        </div>
+      </div>
+      <div class="takeaway">객체 설계 중심에서 데이터 경계 중심으로 시선이 이동함</div>
+    </section>
+
+    <section class="slide" data-title="conclusion">
+      <div class="topline">
+        <div class="meta"><strong>Node Team</strong>10min Seminar</div>
+        <div class="date">2026.04.01</div>
+      </div>
+      <h2 class="title">결론: 이번 프로젝트에서 내가 얻은 것</h2>
+      <div class="bullet-list">
+        <div class="bullet-card">좋은 DTO보다 흔들리지 않는 데이터 규칙의 기준점이 더 중요했음</div>
+        <div class="bullet-card">Schema는 백과 프론트가 함께 보는 요청/응답 형식의 기준점이 될 수 있었고, Orval로 협업 비용도 줄일 수 있었음</div>
+        <div class="bullet-card">이번에는 클래스를 먼저 설계하지 않고, 데이터 규칙을 먼저 세웠음</div>
+      </div>
+      <div class="section-pill" style="margin-top: 24px; width: 560px; font-size: 40px; padding: 16px 22px;">
+        Thank you.
+      </div>
+    </section>
+  </div>
+
+  <div class="controls">
+    <button type="button" id="prev" aria-label="Previous slide">←</button>
+    <button type="button" id="next" aria-label="Next slide">→</button>
+  </div>
+  <div class="progress">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const isPrintMode = params.has("print");
+    const requestedSlide = Number(params.get("slide"));
+    if (isPrintMode) {
+      document.body.classList.add("print-mode");
+    }
+
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const progressBar = document.getElementById("progressBar");
+    let activeIndex =
+      Number.isFinite(requestedSlide) && requestedSlide >= 1 && requestedSlide <= slides.length
+        ? requestedSlide - 1
+        : 0;
+
+    function renderSlides() {
+      slides.forEach((slide, index) => {
+        slide.classList.toggle("active", index === activeIndex);
+        const oldFooter = slide.querySelector(".footer-note");
+        if (oldFooter) oldFooter.remove();
+        const footer = document.createElement("div");
+        footer.className = "footer-note";
+        footer.innerHTML = `<span class="slide-count">${index + 1} / ${slides.length}</span>`;
+        slide.appendChild(footer);
+      });
+
+      progressBar.style.width = `${((activeIndex + 1) / slides.length) * 100}%`;
+    }
+
+    function move(direction) {
+      activeIndex = Math.max(0, Math.min(slides.length - 1, activeIndex + direction));
+      renderSlides();
+    }
+
+    if (!isPrintMode) {
+      document.getElementById("prev").addEventListener("click", () => move(-1));
+      document.getElementById("next").addEventListener("click", () => move(1));
+
+      window.addEventListener("keydown", (event) => {
+        if (["ArrowRight", "PageDown", " "].includes(event.key)) {
+          event.preventDefault();
+          move(1);
+        }
+        if (["ArrowLeft", "PageUp", "Backspace"].includes(event.key)) {
+          event.preventDefault();
+          move(-1);
+        }
+        if (event.key === "Home") {
+          activeIndex = 0;
+          renderSlides();
+        }
+        if (event.key === "End") {
+          activeIndex = slides.length - 1;
+          renderSlides();
+        }
+      });
+    }
+
+    renderSlides();
+  </script>
+</body>
+
+</html>
