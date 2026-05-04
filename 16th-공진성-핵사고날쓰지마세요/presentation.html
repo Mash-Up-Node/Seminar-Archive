@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hexagonal 쓰지마세요</title>
+  <style>
+    /* ===== CSS Variables ===== */
+    :root {
+      --primary: #8bc34a;
+      --primary-light: #dcedc8;
+      --primary-dark: #33691e;
+      --primary-bg: #f1f8e9;
+      --danger: #ef5350;
+      --danger-light: #ffebee;
+      --success: #66bb6a;
+      --info: #42a5f5;
+      --purple: #7e57c2;
+      --orange: #ffa726;
+      --text: #263238;
+      --text-light: #607d8b;
+      --bg-dark: #1a2e1a;
+      --bg-dark-2: #243524;
+      --white: #ffffff;
+      --slide-padding: 80px;
+    }
+
+    /* ===== Reset & Base ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+                   'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      background: #000;
+      overflow: hidden;
+      cursor: none;
+    }
+
+    /* ===== Presentation Container ===== */
+    .presentation {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* ===== Slide Base ===== */
+    .slide {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: var(--slide-padding);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ===== Slide Themes ===== */
+    .slide--dark {
+      background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-dark-2) 100%);
+      color: var(--white);
+    }
+
+    .slide--light {
+      background: linear-gradient(180deg, var(--white) 0%, var(--primary-bg) 100%);
+      color: var(--text);
+    }
+
+    .slide--accent {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, #2e5a1e 50%, var(--bg-dark) 100%);
+      color: var(--white);
+    }
+
+    /* ===== Typography ===== */
+    .slide-title {
+      font-size: clamp(1.8rem, 3vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 50px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .slide--light .slide-title {
+      color: var(--primary-dark);
+    }
+
+    .slide-content {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    .slide-keyword {
+      font-size: clamp(1rem, 1.5vw, 1.3rem);
+      font-weight: 600;
+      padding-top: 24px;
+      border-top: 3px solid var(--primary);
+      text-align: center;
+      margin-top: 40px;
+      letter-spacing: -0.02em;
+    }
+
+    .slide--dark .slide-keyword {
+      color: var(--primary);
+    }
+
+    .slide--light .slide-keyword {
+      color: var(--primary-dark);
+    }
+
+    /* ===== Slide 0: Opening ===== */
+    .opening-title {
+      font-size: clamp(3rem, 6vw, 5.5rem);
+      font-weight: 900;
+      color: var(--primary);
+      letter-spacing: -0.03em;
+      text-align: center;
+      line-height: 1.2;
+      margin-bottom: 30px;
+    }
+
+    .opening-subtitle {
+      font-size: clamp(1rem, 1.8vw, 1.5rem);
+      color: #8a9a8a;
+      text-align: center;
+      font-weight: 400;
+      line-height: 1.6;
+    }
+
+    .opening-author {
+      position: absolute;
+      bottom: 60px;
+      font-size: 1rem;
+      color: #5a6a5a;
+    }
+
+    /* ===== Hexagon Shape ===== */
+    .hexagon {
+      width: 180px;
+      height: 180px;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      background: linear-gradient(135deg, var(--primary) 0%, #6d9b35 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--white);
+      font-weight: 800;
+      font-size: 1rem;
+      text-align: center;
+      padding: 30px;
+      flex-shrink: 0;
+    }
+
+    .hexagon--large {
+      width: 220px;
+      height: 220px;
+      font-size: 1.1rem;
+    }
+
+    .hexagon--small {
+      width: 100px;
+      height: 100px;
+      font-size: 0.7rem;
+      padding: 15px;
+    }
+
+    /* ===== Diagram Components ===== */
+    .diagram-box {
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-align: center;
+      min-width: 120px;
+      line-height: 1.4;
+    }
+
+    .diagram-box--inbound {
+      background: rgba(66, 165, 245, 0.15);
+      border: 2px solid var(--info);
+      color: var(--info);
+    }
+
+    .diagram-box--outbound {
+      background: rgba(126, 87, 194, 0.15);
+      border: 2px solid var(--purple);
+      color: var(--purple);
+    }
+
+    .diagram-box--adapter {
+      background: rgba(255, 167, 38, 0.15);
+      border: 2px solid var(--orange);
+      color: #e65100;
+    }
+
+    .diagram-box--danger {
+      background: var(--danger-light);
+      border: 2px solid var(--danger);
+      color: var(--danger);
+    }
+
+    .diagram-box--success {
+      background: rgba(102, 187, 106, 0.15);
+      border: 2px solid var(--success);
+      color: #2e7d32;
+    }
+
+    .diagram-box--neutral {
+      background: #f5f5f5;
+      border: 2px solid #bdbdbd;
+      color: #616161;
+    }
+
+    .diagram-arrow {
+      font-size: 1.8rem;
+      color: #bdbdbd;
+      margin: 0 8px;
+      flex-shrink: 0;
+    }
+
+    .slide--dark .diagram-arrow {
+      color: #5a6a5a;
+    }
+
+    /* ===== Slide 1: Analogy + Hexagonal ===== */
+    .analogy-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 50px;
+    }
+
+    .analogy-row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .analogy-icon {
+      width: 100px;
+      height: 100px;
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      position: relative;
+    }
+
+    .analogy-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 8px;
+      text-align: center;
+      color: var(--text-light);
+    }
+
+    .analogy-equals {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    /* Hexagonal Architecture Diagram */
+    .hex-arch {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .hex-arch-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hex-arch-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ===== Slide 2: Carbon Accounting ===== */
+    .carbon-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .adapters-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .adapter-card {
+      padding: 20px 28px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-align: center;
+      min-width: 140px;
+      transition: transform 0.3s;
+    }
+
+    .adapter-card:hover { transform: scale(1.05); }
+
+    .adapter-card--sap {
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      color: #1565c0;
+      border: 2px solid #64b5f6;
+    }
+    .adapter-card--excel {
+      background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+      color: #2e7d32;
+      border: 2px solid #81c784;
+    }
+    .adapter-card--kepco {
+      background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+      color: #e65100;
+      border: 2px solid #ffb74d;
+    }
+    .adapter-card--api {
+      background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+      color: #6a1b9a;
+      border: 2px solid #ba68c8;
+    }
+
+    .port-bridge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .port-line {
+      width: 3px;
+      height: 30px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+
+    .port-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--primary-dark);
+      writing-mode: vertical-rl;
+      letter-spacing: 0.1em;
+    }
+
+    /* ===== Slide 3: Transition ===== */
+    .transition-text {
+      font-size: clamp(3rem, 5vw, 4.5rem);
+      font-weight: 900;
+      color: var(--primary);
+      text-align: center;
+    }
+
+    /* ===== Comparison Layout (used in multiple slides) ===== */
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .comparison-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .comparison-header {
+      font-size: 1.3rem;
+      font-weight: 800;
+      padding: 12px 32px;
+      border-radius: 30px;
+      text-align: center;
+    }
+
+    .comparison-header--expect {
+      background: rgba(102, 187, 106, 0.2);
+      color: #2e7d32;
+    }
+
+    .comparison-header--reality {
+      background: rgba(239, 83, 80, 0.2);
+      color: var(--danger);
+    }
+
+    .comparison-header--good {
+      background: rgba(102, 187, 106, 0.15);
+      color: #2e7d32;
+      border: 2px solid var(--success);
+    }
+
+    .comparison-header--bad {
+      background: rgba(239, 83, 80, 0.1);
+      color: var(--danger);
+      border: 2px solid var(--danger);
+    }
+
+    /* ===== Flow Diagram ===== */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .flow-item {
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-align: center;
+      width: 100%;
+      max-width: 260px;
+    }
+
+    .flow-arrow {
+      font-size: 1.4rem;
+      color: #bdbdbd;
+    }
+
+    .flow-item--domain {
+      background: var(--primary-light);
+      border: 2px solid var(--primary);
+      color: var(--primary-dark);
+    }
+
+    .flow-item--port {
+      background: #e8eaf6;
+      border: 2px solid #7986cb;
+      color: #283593;
+    }
+
+    .flow-item--leak {
+      background: var(--danger-light);
+      border: 2px dashed var(--danger);
+      color: var(--danger);
+      font-size: 0.8rem;
+    }
+
+    .flow-item--clean {
+      background: rgba(102, 187, 106, 0.1);
+      border: 2px solid var(--success);
+      color: #2e7d32;
+    }
+
+    .flow-item--gray {
+      background: #f5f5f5;
+      border: 2px solid #e0e0e0;
+      color: #757575;
+    }
+
+    .flow-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      margin-left: 6px;
+    }
+
+    .flow-badge--leak {
+      background: var(--danger);
+      color: var(--white);
+    }
+
+    /* ===== Slide 5: Java vs TS ===== */
+    .lang-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 30px;
+      width: 100%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .lang-name {
+      font-size: 1.4rem;
+      font-weight: 900;
+    }
+
+    .lang-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .lang-icon {
+      font-size: 1.6rem;
+    }
+
+    .poof {
+      font-size: 2rem;
+      animation: poof 2s ease-in-out infinite;
+    }
+
+    @keyframes poof {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.8); }
+    }
+
+    /* ===== Slide 6: Port Wall ===== */
+    .wall-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .wall-side {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px;
+    }
+
+    .wall-side--left { align-items: flex-end; }
+    .wall-side--right { align-items: flex-start; }
+
+    .wall-barrier {
+      width: 8px;
+      height: 300px;
+      background: repeating-linear-gradient(
+        180deg,
+        #7986cb 0px, #7986cb 20px,
+        transparent 20px, transparent 30px
+      );
+      position: relative;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .wall-barrier::before {
+      content: 'PORT';
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #7986cb;
+      letter-spacing: 0.15em;
+    }
+
+    .wall-hole {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: var(--danger);
+      border-radius: 50%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0.6;
+    }
+
+    .wall-type {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .wall-type--domain {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+    }
+
+    .wall-type--leak {
+      background: var(--danger-light);
+      color: var(--danger);
+      border: 1px dashed var(--danger);
+    }
+
+    .wall-type--orm {
+      background: #fff3e0;
+      color: #e65100;
+      border: 1px dashed var(--orange);
+    }
+
+    /* ===== Slide 7: Circular Deps ===== */
+    .circular-diagram {
+      position: relative;
+      width: 400px;
+      height: 350px;
+    }
+
+    .circular-module {
+      position: absolute;
+      padding: 18px 28px;
+      border-radius: 14px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      background: var(--white);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      border: 3px solid var(--primary);
+      z-index: 2;
+    }
+
+    .circular-module:nth-child(1) { top: 0; left: 50%; transform: translateX(-50%); }
+    .circular-module:nth-child(2) { bottom: 30px; left: 0; }
+    .circular-module:nth-child(3) { bottom: 30px; right: 0; }
+
+    .circular-svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+    }
+
+    .circular-label {
+      position: absolute;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--danger);
+      background: var(--danger-light);
+      padding: 3px 8px;
+      border-radius: 4px;
+      z-index: 3;
+    }
+
+    /* ===== Slide 8: AI Era ===== */
+    .token-compare {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .token-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .token-label {
+      font-weight: 800;
+      font-size: 1rem;
+      min-width: 120px;
+      text-align: right;
+    }
+
+    .token-bar-container {
+      flex: 1;
+      height: 50px;
+      background: #f5f5f5;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .token-bar {
+      height: 100%;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      padding-left: 16px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--white);
+      transition: width 1s ease;
+    }
+
+    .token-bar--hex {
+      background: linear-gradient(90deg, var(--danger), #c62828);
+      width: 90%;
+    }
+
+    .token-bar--simple {
+      background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+      width: 60%;
+    }
+
+    .token-files {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .token-file {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    .token-file--hex {
+      background: rgba(239, 83, 80, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(239, 83, 80, 0.3);
+    }
+
+    .token-file--simple {
+      background: rgba(139, 195, 74, 0.1);
+      color: var(--primary-dark);
+      border: 1px solid rgba(139, 195, 74, 0.3);
+    }
+
+    .ai-message {
+      margin-top: 10px;
+      padding: 20px 30px;
+      background: var(--white);
+      border-radius: 14px;
+      border-left: 4px solid var(--primary);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    /* ===== Slide 9: Approach ===== */
+    .approach-card {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 40px 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      width: 100%;
+    }
+
+    .approach-icon {
+      font-size: 3rem;
+    }
+
+    .approach-flow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .approach-step {
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .approach-step--bad {
+      background: rgba(239, 83, 80, 0.1);
+      color: var(--danger);
+    }
+
+    .approach-step--good {
+      background: rgba(102, 187, 106, 0.1);
+      color: #2e7d32;
+    }
+
+    .approach-step--uncertain {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    .approach-arrow {
+      font-size: 1.2rem;
+      color: #bdbdbd;
+    }
+
+    .bottom-tags {
+      display: flex;
+      gap: 16px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .bottom-tag {
+      padding: 10px 22px;
+      border-radius: 30px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: 2px solid var(--primary);
+    }
+
+    /* ===== Slide 10: Closing ===== */
+    .closing-quote {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 900;
+      color: var(--primary);
+      text-align: center;
+      line-height: 1.5;
+      letter-spacing: -0.02em;
+    }
+
+    .closing-thanks {
+      margin-top: 60px;
+      font-size: 1.2rem;
+      color: #6a8a6a;
+    }
+
+    /* ===== Navigation ===== */
+    .nav {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    body:hover .nav,
+    body.show-controls .nav {
+      opacity: 1;
+      cursor: default;
+    }
+
+    body:hover { cursor: default; }
+
+    .nav-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: var(--white);
+      font-size: 1.2rem;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-btn:hover { background: rgba(255,255,255,0.3); }
+
+    .slide--light ~ .nav .nav-btn,
+    .nav-btn.on-light {
+      background: rgba(0,0,0,0.08);
+      color: var(--text);
+    }
+
+    .nav-counter {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.6);
+      min-width: 60px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ===== Progress Bar ===== */
+    .progress {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: var(--primary);
+      transition: width 0.4s ease;
+      z-index: 100;
+    }
+
+    /* ===== Speaker Notes ===== */
+    .notes-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.92);
+      color: #ccc;
+      padding: 20px 40px;
+      font-size: 0.9rem;
+      line-height: 1.8;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      z-index: 200;
+      max-height: 35vh;
+      overflow-y: auto;
+      backdrop-filter: blur(10px);
+    }
+
+    .notes-panel.visible {
+      transform: translateY(0);
+    }
+
+    .notes-panel .notes-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .speaker-notes { display: none; }
+
+    /* ===== Section Tag ===== */
+    .section-tag {
+      position: absolute;
+      top: 30px;
+      left: 40px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+
+    .slide--light .section-tag {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+    }
+
+    .slide--dark .section-tag {
+      background: rgba(139,195,74,0.15);
+      color: var(--primary);
+    }
+
+    /* ===== Animations ===== */
+    .slide.active .fade-up {
+      animation: fadeUp 0.7s ease forwards;
+    }
+
+    .slide.active .fade-up-delay {
+      animation: fadeUp 0.7s ease 0.3s forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      :root { --slide-padding: 30px; }
+      .comparison { grid-template-columns: 1fr; gap: 24px; }
+      .carbon-diagram { flex-direction: column; }
+      .wall-diagram { flex-direction: column; }
+      .hex-arch { flex-direction: column; }
+      .hexagon { width: 130px; height: 130px; }
+      .hexagon--large { width: 160px; height: 160px; }
+    }
+
+    /* ===== Speaker Intro ===== */
+    .speaker-intro {
+      display: flex;
+      align-items: center;
+      gap: 50px;
+      max-width: 800px;
+    }
+
+    .speaker-photo {
+      width: 280px;
+      height: 350px;
+      border-radius: 20px;
+      object-fit: cover;
+      border: 4px solid var(--primary);
+      flex-shrink: 0;
+      box-shadow: 0 8px 30px rgba(139,195,74,0.3);
+    }
+
+    .speaker-info {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .speaker-name {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--primary);
+    }
+
+    .speaker-detail {
+      font-size: 1.1rem;
+      color: #8a9a8a;
+      line-height: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .speaker-detail li {
+      list-style: none;
+      padding-left: 24px;
+      position: relative;
+    }
+
+    .speaker-detail li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .speaker-highlight {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .sunae-img {
+      height: 1.1em;
+      vertical-align: middle;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+
+    /* ===== Divider ===== */
+    .vs-divider {
+      width: 3px;
+      height: 200px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      position: relative;
+    }
+
+    .vs-divider::after {
+      content: 'VS';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--white);
+      padding: 8px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #bdbdbd;
+    }
+
+    .slide--dark .vs-divider {
+      background: #3a4a3a;
+    }
+
+    .slide--dark .vs-divider::after {
+      background: var(--bg-dark-2);
+      color: #5a6a5a;
+    }
+  </style>
+</head>
+<body>
+  <div class="presentation">
+
+    <!-- ==================== SLIDE 0: Opening ==================== -->
+    <div class="slide slide--dark active" id="slide-0">
+      <div class="opening-title fade-up">Hexagonal 쓰지마세요</div>
+      <div class="opening-subtitle fade-up-delay">
+        Port-Adapter Pattern을 NestJS에 적용한 썰 풉니다
+      </div>
+      <div class="opening-author fade-up-delay">
+        <!-- 발표자 이름 -->
+      </div>
+      <div class="speaker-notes">
+        자극적인 제목이죠. 직접 써보고 하는 말입니다. 탄소회계 서비스를 개발하면서 Hexagonal 아키텍처를 도입했던 경험을 공유드리겠습니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE: Speaker Intro ==================== -->
+    <div class="slide slide--dark" id="slide-intro">
+      <div class="slide-content">
+        <div class="speaker-intro fade-up">
+          <img src="speaker-photo.jpg" alt="발표자 사진" class="speaker-photo">
+          <div class="speaker-info">
+            <div class="speaker-name">발표자 소개</div>
+            <ul class="speaker-detail">
+              <li>2년차 순정 <span class="speaker-highlight">Node.js</span> Backend 개발자</li>
+              <li>Node.js 왜 썼냐고요? <span class="speaker-highlight">순애</span>여서요.<img src="sunae.png" alt="순애야" class="sunae-img"></li>
+              <li>현재: AI 영상 생성 플랫폼 백엔드 개발자</li>
+              <li>전: <span class="speaker-highlight">탄소회계 플랫폼</span> 백엔드 개발자</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        간단히 자기소개 드리겠습니다. 2년차 Node.js 백엔드 개발자이고, 현재는 AI 영상 생성 플랫폼에서 일하고 있습니다. 오늘 이야기할 Hexagonal 아키텍처는 이전 회사인 탄소회계 플랫폼에서의 경험입니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 1: What is Hexagonal? ==================== -->
+    <div class="slide slide--light" id="slide-1">
+      <div class="slide-title fade-up">Hexagonal Architecture란?</div>
+      <div class="slide-content">
+        <div class="analogy-section fade-up-delay">
+
+          <!-- Analogy -->
+          <div class="analogy-row">
+            <div class="analogy-icon">⚡<div class="analogy-label">전기<br>= 도메인</div></div>
+            <div class="diagram-arrow">+</div>
+            <div class="analogy-icon">🔌<div class="analogy-label">콘센트<br>= 포트</div></div>
+            <div class="diagram-arrow">+</div>
+            <div class="analogy-icon">📱<div class="analogy-label">기기들<br>= 어댑터</div></div>
+          </div>
+
+          <!-- Architecture Diagram -->
+          <div class="hex-arch">
+            <div class="hex-arch-group">
+              <div class="hex-arch-label">어댑터</div>
+              <div class="diagram-box diagram-box--adapter">REST API<br>Scheduler</div>
+            </div>
+            <div class="diagram-arrow">→</div>
+            <div class="hex-arch-group">
+              <div class="hex-arch-label">인바운드 포트</div>
+              <div class="diagram-box diagram-box--inbound">Use Case<br>Interface</div>
+            </div>
+            <div class="diagram-arrow">→</div>
+            <div class="hex-arch-group">
+              <div class="hex-arch-label">코어</div>
+              <div class="hexagon">도메인<br>비즈니스 로직</div>
+            </div>
+            <div class="diagram-arrow">→</div>
+            <div class="hex-arch-group">
+              <div class="hex-arch-label">아웃바운드 포트</div>
+              <div class="diagram-box diagram-box--outbound">Repository<br>Interface</div>
+            </div>
+            <div class="diagram-arrow">→</div>
+            <div class="hex-arch-group">
+              <div class="hex-arch-label">어댑터</div>
+              <div class="diagram-box diagram-box--adapter">DB<br>외부 API</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="slide-keyword fade-up-delay">어댑터가 바뀌어도, 비즈니스 코드는 그대로</div>
+      <div class="speaker-notes">
+        Hexagonal Architecture, 한국에서는 보통 '헥사고날 아키텍처'라고 부르는데요. 포트와 어댑터 패턴이라고도 합니다. 핵심 개념은 간단합니다.
+
+        전기를 떠올려보세요. 전기는 항상 220V입니다. 콘센트에 핸드폰을 꽂든, 아이패드를 꽂든, 애플워치를 꽂든 전기 자체는 바뀌지 않죠. 여기서 전기가 도메인, 즉 비즈니스 로직입니다. 콘센트가 포트 — 표준화된 인터페이스이고요. 거기에 꽂히는 기기들이 어댑터입니다.
+
+        이 다이어그램을 보시면, 가운데 도메인이 있고 양쪽에 포트가 있습니다. 왼쪽은 인바운드 — 외부에서 요청이 들어오는 쪽입니다. REST API나 스케줄러 같은 어댑터가 인바운드 포트를 통해 도메인에 접근합니다. 오른쪽은 아웃바운드 — 도메인이 데이터를 가져오거나 저장하는 쪽입니다. DB나 외부 API 같은 어댑터가 아웃바운드 포트 뒤에 숨어있죠.
+
+        핵심 약속은 이겁니다. 어댑터가 바뀌어도 비즈니스 코드는 한 줄도 안 건드린다. DB를 PostgreSQL에서 MongoDB로 바꿔도, REST API를 GraphQL로 바꿔도, 도메인 로직은 그대로입니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 2: Carbon Accounting ==================== -->
+    <div class="slide slide--light" id="slide-2">
+      <div class="section-tag">Case Study</div>
+      <div class="slide-title fade-up">왜 우리가 이걸 선택했나</div>
+      <div class="slide-content">
+        <div class="carbon-diagram fade-up-delay">
+          <div class="adapters-grid">
+            <div class="adapter-card adapter-card--sap">🏢 SAP 데이터</div>
+            <div class="adapter-card adapter-card--excel">📊 Excel 파일</div>
+            <div class="adapter-card adapter-card--kepco">⚡ 한국전력공사</div>
+            <div class="adapter-card adapter-card--api">🔗 자체 API</div>
+          </div>
+
+          <div class="port-bridge">
+            <div class="diagram-arrow" style="font-size:2.2rem">→</div>
+            <div style="font-size:0.8rem;font-weight:700;color:var(--primary-dark);">아웃바운드<br>포트</div>
+            <div class="diagram-arrow" style="font-size:2.2rem">→</div>
+          </div>
+
+          <div class="hexagon hexagon--large">탄소 배출량<br>계산 엔진</div>
+        </div>
+      </div>
+      <div class="slide-keyword fade-up-delay">문제를 예상하고, 미리 설계했다</div>
+      <div class="speaker-notes">
+        탄소회계 서비스를 만들면서, 고객사마다 데이터 전송 방식이 다를 거라는 걸 예상했습니다. A회사는 SAP, B회사는 엑셀, C회사는 한국전력공사 홈페이지... 관리 방식이 전부 다릅니다. 어댑터만 갈아끼우면 되겠다. 교과서적으로 완벽한 use case처럼 보였습니다. 중요한 건, 우리는 문제가 터져서 도입한 게 아니라 문제를 예상하고 미리 대비한 겁니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 3: Transition ==================== -->
+    <div class="slide slide--accent" id="slide-3">
+      <div class="transition-text fade-up">그런데요</div>
+      <div class="speaker-notes">
+        (잠시 멈춤) 그런데요. 실제로 구현해보니 이야기가 달라졌습니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 4: TS Type System ==================== -->
+    <div class="slide slide--light" id="slide-4">
+      <div class="section-tag">Problem 01</div>
+      <div class="slide-title fade-up">TypeScript의 타입은 경계를 지켜주지 않는다</div>
+      <div class="slide-content">
+        <div class="comparison fade-up-delay">
+          <!-- 컴파일 타임 -->
+          <div class="comparison-col">
+            <div class="comparison-header comparison-header--bad">Compile Time</div>
+            <div class="lang-card">
+              <div style="font-weight:800;font-size:1rem;color:var(--text);margin-bottom:4px">구조적 타이핑</div>
+              <div class="flow" style="gap:8px">
+                <div class="flow-item flow-item--domain" style="max-width:240px;padding:10px 16px;font-size:0.8rem">
+                  companyId, emissionValue, factor
+                </div>
+                <div class="flow-item flow-item--leak" style="max-width:240px;padding:10px 16px">
+                  + createdAt <span class="flow-badge flow-badge--leak">DB</span><br>
+                  + updatedAt <span class="flow-badge flow-badge--leak">DB</span>
+                </div>
+              </div>
+              <div style="font-size:0.8rem;color:var(--danger);font-weight:700;margin-top:8px;text-align:center">
+                "필드 다 있으니 OK"<br>→ 컴파일 에러 없음
+              </div>
+            </div>
+          </div>
+          <!-- 런타임 -->
+          <div class="comparison-col">
+            <div class="comparison-header comparison-header--bad">Runtime</div>
+            <div class="lang-card">
+              <div style="font-weight:800;font-size:1rem;color:var(--text);margin-bottom:4px">인터페이스 증발</div>
+              <div class="lang-step">
+                <span>Interface</span>
+                <span class="diagram-arrow" style="margin:0">→</span>
+                <span>컴파일</span>
+                <span class="diagram-arrow" style="margin:0">→</span>
+                <span class="poof">💨</span>
+              </div>
+              <div style="font-size:0.8rem;color:var(--text-light);text-align:center;margin-top:8px">
+                JS에는 interface가 없음<br>
+                DI 토큰으로 사용 불가<br>
+                abstract class로 우회 → 느슨한 계약
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-keyword fade-up-delay">컴파일 타임에도, 런타임에도 경계가 없다</div>
+      <div class="speaker-notes">
+        TypeScript의 타입 시스템은 두 가지 측면에서 Hexagonal의 약속을 지켜주지 않습니다.
+
+        첫째, 컴파일 타임. TypeScript는 구조적 타이핑 언어입니다. 포트가 도메인 엔티티만 반환하라고 명시해도, DB 전용 필드인 createdAt, updatedAt 같은 게 같이 따라옵니다. TypeScript는 필요한 필드가 다 있으니 OK, 추가 필드가 있어도 에러를 안 냅니다. DB 전용 데이터가 도메인까지 조용히 침투합니다.
+
+        둘째, 런타임. TypeScript의 interface는 컴파일하면 JavaScript에서 완전히 사라집니다. JavaScript에는 interface라는 개념 자체가 없거든요. NestJS의 DI 컨테이너는 런타임에 동작하는데, 토큰으로 쓸 interface가 없습니다. abstract class로 우회하지만, 구현체가 시그니처를 완벽히 안 맞춰도 통과되는 경우가 생깁니다. 결국 컴파일 타임에도, 런타임에도 경계가 보장되지 않습니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 5: Return Type Leakage ==================== -->
+    <div class="slide slide--light" id="slide-5">
+      <div class="section-tag">Problem 02</div>
+      <div class="slide-title fade-up">반환 타입 누수</div>
+      <div class="slide-content">
+        <div class="wall-diagram fade-up-delay">
+          <!-- Left: What goes in -->
+          <div class="wall-side wall-side--left">
+            <div style="font-size:0.8rem;font-weight:800;color:var(--text-light);margin-bottom:8px">어댑터 레이어</div>
+            <div class="wall-type wall-type--domain">EmissionRecord</div>
+            <div class="wall-type wall-type--domain">EmissionFactor</div>
+            <div class="wall-type wall-type--orm">UpdateResult</div>
+            <div class="wall-type wall-type--leak">ResponseDto</div>
+            <div class="wall-type wall-type--orm">Partial&lt;Entity&gt;</div>
+          </div>
+
+          <!-- Wall (Port) -->
+          <div class="wall-barrier" style="height:280px">
+            <div class="wall-hole" style="top:55%"></div>
+            <div class="wall-hole" style="top:70%"></div>
+            <div class="wall-hole" style="top:85%"></div>
+          </div>
+
+          <!-- Right: What comes through -->
+          <div class="wall-side wall-side--right">
+            <div style="font-size:0.8rem;font-weight:800;color:var(--text-light);margin-bottom:8px">도메인 레이어</div>
+            <div class="wall-type wall-type--domain">EmissionRecord ✅</div>
+            <div class="wall-type wall-type--domain">EmissionFactor ✅</div>
+            <div class="wall-type wall-type--leak">UpdateResult ⚠️</div>
+            <div class="wall-type wall-type--leak">ResponseDto ⚠️</div>
+            <div class="wall-type wall-type--leak">Partial&lt;Entity&gt; ⚠️</div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-keyword fade-up-delay">포트가 벽이 아니라 통로가 된다</div>
+      <div class="speaker-notes">
+        포트가 경계 역할을 해야 하는데, 정작 포트 정의에 TypeORM의 UpdateResult 같은 ORM 전용 타입이 들어가 있습니다. 인바운드 포트도 마찬가지로 어댑터 레이어의 ResponseDto를 반환합니다. 포트가 경계가 아니라 통로가 됩니다. 차단해야 할 외부 타입이 그대로 도메인까지 흘러들어옵니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 7: Circular Dependencies ==================== -->
+    <div class="slide slide--light" id="slide-7">
+      <div class="section-tag">Problem 03</div>
+      <div class="slide-title fade-up">순환 의존성의 늪</div>
+      <div class="slide-content">
+        <div class="fade-up-delay" style="display:flex;flex-direction:column;align-items:center;gap:30px">
+          <div class="circular-diagram">
+            <div class="circular-module">📊 Emission</div>
+            <div class="circular-module">📁 DataSource</div>
+            <div class="circular-module">📋 Report</div>
+            <svg class="circular-svg" viewBox="0 0 400 350">
+              <!-- Operation -> Chauffeur -->
+              <defs>
+                <marker id="arrow-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#ef5350"/>
+                </marker>
+              </defs>
+              <!-- Op -> Chauffeur -->
+              <path d="M 150 60 Q 80 160 100 260" stroke="#ef5350" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,4"/>
+              <!-- Chauffeur -> Op -->
+              <path d="M 130 260 Q 120 160 170 60" stroke="#ef5350" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,4"/>
+              <!-- Op -> Vehicle -->
+              <path d="M 250 60 Q 320 160 300 260" stroke="#ef5350" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,4"/>
+              <!-- Vehicle -> Op -->
+              <path d="M 270 260 Q 280 160 230 60" stroke="#ef5350" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,4"/>
+              <!-- Chauffeur -> Vehicle -->
+              <path d="M 160 300 L 250 300" stroke="#ef5350" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)" stroke-dasharray="6,4"/>
+            </svg>
+            <div class="circular-label" style="top:140px;left:60px">forwardRef()</div>
+            <div class="circular-label" style="top:140px;right:60px">forwardRef()</div>
+            <div class="circular-label" style="bottom:55px;left:50%;transform:translateX(-50%)">forwardRef()</div>
+          </div>
+          <div style="text-align:center;max-width:500px">
+            <div style="font-size:1rem;font-weight:600;color:var(--text-light);line-height:1.7">
+              모듈 경계를 엄격히 나눴지만<br>
+              현실의 비즈니스는 경계를 넘나든다
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-keyword fade-up-delay">아키텍처를 지키느라 코드가 복잡해진다</div>
+      <div class="speaker-notes">
+        Hexagonal 구조를 유지하려고 모듈 경계를 엄격히 나눴는데, 현실의 비즈니스 로직은 여러 도메인을 넘나듭니다. 결국 순환 참조가 발생하고, NestJS의 forwardRef가 코드 전반에 퍼집니다. 아키텍처가 코드를 보호하는 게 아니라, 코드가 아키텍처를 유지하느라 복잡해지는 역전이 일어납니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 8: AI Era ==================== -->
+    <div class="slide slide--light" id="slide-8">
+      <div class="section-tag">Perspective</div>
+      <div class="slide-title fade-up">AI 시대의 Hexagonal</div>
+      <div class="slide-content">
+        <div style="display:flex;flex-direction:column;gap:30px;width:100%;max-width:750px" class="fade-up-delay">
+          <!-- Token Comparison -->
+          <div class="token-compare">
+            <div>
+              <div class="token-row">
+                <div class="token-label">Hexagonal</div>
+                <div class="token-bar-container">
+                  <div class="token-bar token-bar--hex">하나의 기능에 6개 파일</div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:6px">
+                <div class="token-files">
+                  <span class="token-file token-file--hex">controller</span>
+                  <span class="token-file token-file--hex">in-port</span>
+                  <span class="token-file token-file--hex">service</span>
+                  <span class="token-file token-file--hex">out-port</span>
+                  <span class="token-file token-file--hex">repository</span>
+                  <span class="token-file token-file--hex">entity</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="token-row">
+                <div class="token-label">단순 구조</div>
+                <div class="token-bar-container">
+                  <div class="token-bar token-bar--simple">하나의 기능에 4개 파일</div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:6px">
+                <div class="token-files">
+                  <span class="token-file token-file--simple">controller</span>
+                  <span class="token-file token-file--simple">service</span>
+                  <span class="token-file token-file--simple">repository</span>
+                  <span class="token-file token-file--simple">entity</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-message">
+            "포트와 어댑터의 분리가 필요했다면,<br>
+            Hexagonal이 아니어도 <strong>인터페이스 하나</strong>면 충분하다"
+          </div>
+        </div>
+      </div>
+      <div class="slide-keyword fade-up-delay">구조를 이해시키는 비용 &gt; 구조가 주는 이점</div>
+      <div class="speaker-notes">
+        한 가지 더. 지금 실무에서 코드의 상당 부분을 AI가 작성하고 있습니다. AI가 코드를 이해하려면 컨텍스트, 즉 토큰이 필요합니다. Hexagonal은 하나의 기능이 여러 레이어에 분산되어 있어서, AI가 전체 맥락을 파악하는 데 불필요하게 많은 토큰을 소모합니다. 그리고 솔직히, 포트와 어댑터의 분리가 필요했다면 — Hexagonal이 아니어도 인터페이스 하나로 충분합니다. 아키텍처 전체를 도입할 필요가 없었던 거죠.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 9: What to do ==================== -->
+    <div class="slide slide--light" id="slide-9">
+      <div class="slide-title fade-up">그래서 어떻게?</div>
+      <div class="slide-content">
+        <div class="comparison fade-up-delay">
+          <!-- Wrong -->
+          <div class="comparison-col">
+            <div class="comparison-header comparison-header--bad">❌</div>
+            <div class="approach-card">
+              <div class="approach-flow">
+                <div class="approach-step approach-step--bad">예상</div>
+                <div class="approach-arrow">→</div>
+                <div class="approach-step approach-step--bad">미리 설계</div>
+                <div class="approach-arrow">→</div>
+                <div class="approach-step approach-step--uncertain">???</div>
+              </div>
+              <div style="font-size:0.9rem;color:var(--text-light);text-align:center;line-height:1.6">
+                문제가 안 올 수도 있고<br>와도 생각보다 단순할 수 있다
+              </div>
+            </div>
+          </div>
+          <!-- Right -->
+          <div class="comparison-col">
+            <div class="comparison-header comparison-header--good">✅</div>
+            <div class="approach-card">
+              <div class="approach-flow">
+                <div class="approach-step approach-step--good">문제 직면</div>
+                <div class="approach-arrow">→</div>
+                <div class="approach-step approach-step--good">그때 풀기</div>
+              </div>
+              <div style="font-size:0.9rem;color:var(--text-light);text-align:center;line-height:1.6">
+                지금 존재하는 문제에 맞는<br>최소한의 구조를 선택
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        우리처럼 문제를 예상해서 미리 설계하는 것도 위험할 수 있습니다. 예상이 맞더라도, 그 구조를 유지하는 비용이 문제 자체보다 클 수 있거든요. 어쩌면 문제가 실제로 왔을 때 그때 푸는 게 더 나을 수 있습니다. 미리 대비하는 건 좋지만, 거기에 매몰되지 마세요. 만약 분리가 필요하다면, 아키텍처 전체를 가져올 게 아니라 필요한 부분에만 인터페이스를 두세요.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE: Startup Reality ==================== -->
+    <div class="slide slide--dark" id="slide-startup">
+      <div style="display:flex;align-items:center;gap:20px;font-size:clamp(2rem,4.5vw,4rem);font-weight:900;color:var(--white);text-align:center" class="fade-up">
+        <span>비즈니스 임팩트</span>
+        <span style="color:var(--primary)">=</span>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <span style="border-bottom:4px solid var(--white);padding-bottom:10px">고객 만족도</span>
+          <span style="padding-top:10px">리소스</span>
+        </div>
+      </div>
+      <div class="speaker-notes">
+        스타트업에서 비즈니스 임팩트는 고객 만족도 나누기 리소스라고 생각합니다. 매일 새로운 기능을 만들어서 고객에게 가치를 전달해야 하는 환경에서는, 리소스를 최대한 줄이면서 고객 만족도를 높이기 위해 태스크의 우선순위를 면밀히 고민해야 합니다. 그 관점에서 보면, 아직 오지 않은 문제를 위한 과한 설계는 리소스를 늘리는 행위입니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE 10: Closing ==================== -->
+    <div class="slide slide--dark" id="slide-10">
+      <div class="closing-quote fade-up">아직 오지 않은 문제를<br>풀려고 노력하지 않는건 어떨까요?</div>
+      <div class="speaker-notes">
+        특히 스타트업이라면 더 그렇습니다. 매일 새로운 기능을 만들어서 고객에게 가치를 전달해야 하는 환경에서는, 그때그때의 우선순위에 집중해야 합니다. 과한 설계는 자산이 아니라 부채가 됩니다. 아직 오지 않은 문제를 풀려고 노력하지 마세요. 지금 눈앞의 문제에 집중하세요. 감사합니다.
+      </div>
+    </div>
+
+    <!-- ==================== SLIDE: Closing Image ==================== -->
+    <div class="slide slide--dark" id="slide-closing-img">
+      <img src="closing-image.png" alt="" style="max-width:80%;max-height:80vh;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.4)" class="fade-up">
+    </div>
+
+  </div>
+
+  <!-- Navigation (hidden) -->
+  <div class="nav" style="display:none">
+    <button class="nav-btn" id="prevBtn" aria-label="이전 슬라이드">◂</button>
+    <span class="nav-counter" id="navCounter"></span>
+    <button class="nav-btn" id="nextBtn" aria-label="다음 슬라이드">▸</button>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="progress" id="progressBar"></div>
+
+  <!-- Speaker Notes Panel -->
+  <div class="notes-panel" id="notesPanel">
+    <div class="notes-label">SPEAKER NOTES (N키로 토글)</div>
+    <div id="notesContent"></div>
+  </div>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlide = 0;
+
+    const navCounter = document.getElementById('navCounter');
+    const progressBar = document.getElementById('progressBar');
+    const notesPanel = document.getElementById('notesPanel');
+    const notesContent = document.getElementById('notesContent');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    let notesVisible = false;
+
+    function updateSlide() {
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === currentSlide);
+      });
+      navCounter.textContent = `${currentSlide + 1} / ${totalSlides}`;
+      progressBar.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+
+      // Update nav button colors based on slide theme
+      const activeSlide = slides[currentSlide];
+      const isLight = activeSlide.classList.contains('slide--light');
+      const navBtns = document.querySelectorAll('.nav-btn');
+      const counter = document.querySelector('.nav-counter');
+      navBtns.forEach(btn => {
+        if (isLight) {
+          btn.style.background = 'rgba(0,0,0,0.08)';
+          btn.style.color = '#263238';
+        } else {
+          btn.style.background = 'rgba(255,255,255,0.15)';
+          btn.style.color = '#fff';
+        }
+      });
+      counter.style.color = isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)';
+
+      // Update speaker notes
+      const notes = activeSlide.querySelector('.speaker-notes');
+      notesContent.textContent = notes ? notes.textContent : '';
+    }
+
+    function goNext() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function goPrev() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      switch(e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+        case ' ':
+          e.preventDefault();
+          goNext();
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          goPrev();
+          break;
+        case 'n':
+        case 'N':
+          notesVisible = !notesVisible;
+          notesPanel.classList.toggle('visible', notesVisible);
+          break;
+        case 'f':
+        case 'F':
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+          } else {
+            document.exitFullscreen();
+          }
+          break;
+      }
+    });
+
+    // Button navigation
+    prevBtn.addEventListener('click', goPrev);
+    nextBtn.addEventListener('click', goNext);
+
+    // Touch support
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) {
+        diff > 0 ? goNext() : goPrev();
+      }
+    }, { passive: true });
+
+    // Show controls briefly on load
+    document.body.classList.add('show-controls');
+    setTimeout(() => document.body.classList.remove('show-controls'), 3000);
+
+    // Initialize
+    updateSlide();
+  </script>
+</body>
+</html>
